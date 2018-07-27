@@ -9,7 +9,7 @@ def _go_binary_impl(ctx):
     # Declare an output file for the main package and compile it from srcs. All
     # our output files will start with a prefix to avoid conflicting with
     # other rules.
-    prefix = str(ctx.label.name) + "%/"
+    prefix = ctx.label.name + "%/"
     main_archive = ctx.actions.declare_file(prefix + "main.a")
     go_compile(
         ctx,
@@ -28,7 +28,7 @@ def _go_binary_impl(ctx):
     )
 
     # Return the DefaultInfo provider. This tells Bazel what files should be
-    # built when a user asks to build a go_binary rules. It also says which
+    # built when someone asks to build a go_binary rules. It also says which
     # one is executable (in this case, there's only one).
     return [DefaultInfo(
         files = depset([executable]),
