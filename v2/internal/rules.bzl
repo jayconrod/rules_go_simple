@@ -19,7 +19,7 @@ def _go_binary_impl(ctx):
     go_compile(
         ctx,
         srcs = ctx.files.srcs,
-        deps = [dep[GoLibrary] for dep in ctx.attr.deps],        
+        deps = [dep[GoLibrary] for dep in ctx.attr.deps],
         out = main_archive,
     )
 

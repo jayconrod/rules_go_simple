@@ -54,7 +54,7 @@ def go_compile(ctx, srcs, out, deps = []):
     for dep in deps:
         dep_import_args.append("-I " + shell.quote(_search_dir(dep.data)))
         dep_archives.append(dep.data.archive)
-        
+
     cmd = "go tool compile -o {out} {imports} -- {srcs}".format(
         out = shell.quote(out.path),
         imports = " ".join(dep_import_args),
@@ -86,7 +86,7 @@ def go_link(ctx, out, main, deps = []):
     for dep in deps_set.to_list():
         dep_lib_args.append("-L " + shell.quote(_search_dir(dep)))
         dep_archives.append(dep.archive)
-        
+
     cmd = "go tool link -o {out} {libs} -- {main}".format(
         out = shell.quote(out.path),
         libs = " ".join(dep_lib_args),
