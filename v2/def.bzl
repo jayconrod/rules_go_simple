@@ -8,3 +8,4 @@
 # not any internal directory.
 
 load("//v2/internal:rules.bzl", "go_binary", "go_library")
+load("//v2/internal:providers.bzl", "GoLibrary")
