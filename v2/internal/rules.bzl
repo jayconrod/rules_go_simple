@@ -76,12 +76,12 @@ def _go_library_impl(ctx):
     return [
         DefaultInfo(files = depset([archive])),
         GoLibrary(
-            data = struct(
+            info = struct(
                 importpath = ctx.attr.importpath,
                 archive = archive,
             ),
             deps = depset(
-                direct = [dep[GoLibrary].data for dep in ctx.attr.deps],
+                direct = [dep[GoLibrary].info for dep in ctx.attr.deps],
                 transitive = [dep[GoLibrary].deps for dep in ctx.attr.deps],
             ),
         ),

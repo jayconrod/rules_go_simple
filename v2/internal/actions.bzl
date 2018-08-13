@@ -25,18 +25,18 @@ def declare_archive(ctx, importpath):
         importpath = importpath,
     ))
 
-def _search_dir(data):
+def _search_dir(info):
     """Returns a directory that should be searched (by -I to the compiler
     or -L to the linker) to find the archive file for a library. The archive
     must have been declared with declare_archive.
 
     Args:
-        data: GoLibrary.data for this library.
+        info: GoLibrary.info for this library.
     Returns:
         A path string for the directory.
     """
-    suffix_len = len("/" + data.importpath + ".a")
-    return data.archive.path[:-suffix_len]
+    suffix_len = len("/" + info.importpath + ".a")
+    return info.archive.path[:-suffix_len]
 
 def go_compile(ctx, srcs, out, deps = []):
     """Compiles a single Go package from sources.
@@ -52,8 +52,8 @@ def go_compile(ctx, srcs, out, deps = []):
     dep_import_args = []
     dep_archives = []
     for dep in deps:
-        dep_import_args.append("-I " + shell.quote(_search_dir(dep.data)))
-        dep_archives.append(dep.data.archive)
+        dep_import_args.append("-I " + shell.quote(_search_dir(dep.info)))
+        dep_archives.append(dep.info.archive)
 
     cmd = "go tool compile -o {out} {imports} -- {srcs}".format(
         out = shell.quote(out.path),
@@ -78,7 +78,7 @@ def go_link(ctx, out, main, deps = []):
         deps: list of GoLibrary objects for direct dependencies.
     """
     deps_set = depset(
-        direct = [d.data for d in deps],
+        direct = [d.info for d in deps],
         transitive = [d.deps for d in deps],
     )
     dep_lib_args = []
