@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
-	"rules_go_simple/v3/tests/list_data_lib"
+	"rules_go_simple/v4/tests/list_data_lib"
 )
 
 func main() {

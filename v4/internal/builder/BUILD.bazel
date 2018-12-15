@@ -1,0 +1,26 @@
+load(
+    "//v4/internal:rules.bzl",
+    "go_tool_binary",
+    "go_std_importcfg",
+)
+
+package(default_visibility = ["//visibility:public"])
+
+# builder is a tool used to perform various tasks related to building Go code,
+# such as compiling packages, linking executables, and generating
+# test sources.
+go_tool_binary(
+    name = "builder",
+    srcs = [
+        "builder.go",
+        "compile.go",
+        "flags.go",
+        "importcfg.go",
+        "link.go",
+        "sourceinfo.go",
+        "test.go",
+    ],
+)
+
+# stdimportcfg generates an importcfg file for the standard library.
+go_std_importcfg(name = "stdimportcfg")

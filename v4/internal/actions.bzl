@@ -38,7 +38,7 @@ def _search_dir(info):
     suffix_len = len("/" + info.importpath + ".a")
     return info.archive.path[:-suffix_len]
 
-def go_compile(ctx, srcs, out, deps = []):
+def go_compile(ctx, srcs, out, importpath = "", deps = []):
     """Compiles a single Go package from sources.
 
     Args:
@@ -47,23 +47,25 @@ def go_compile(ctx, srcs, out, deps = []):
         out: output .a file. Should have the importpath as a suffix,
             for example, library "example.com/foo" should have the path
             "somedir/example.com/foo.a".
+        importpath: the path other libraries may use to import this package.
         deps: list of GoLibrary objects for direct dependencies.
     """
-    dep_import_args = []
-    dep_archives = []
-    for dep in deps:
-        dep_import_args.append("-I " + shell.quote(_search_dir(dep.info)))
-        dep_archives.append(dep.info.archive)
+    args = ctx.actions.args()
+    args.add("compile")
+    args.add("-stdimportcfg", ctx.file._stdimportcfg)
+    dep_infos = [d.info for d in deps]
+    args.add_all(dep_infos, before_each = "-arc", map_each = _format_arc)
+    if importpath:
+        args.add("-p", importpath)
+    args.add("-o", out)
+    args.add_all(srcs)
 
-    cmd = "go tool compile -o {out} {imports} -- {srcs}".format(
-        out = shell.quote(out.path),
-        imports = " ".join(dep_import_args),
-        srcs = " ".join([shell.quote(src.path) for src in srcs]),
-    )
-    ctx.actions.run_shell(
+    inputs = srcs + [dep.info.archive for dep in deps] + [ctx.file._stdimportcfg]
+    ctx.actions.run(
         outputs = [out],
-        inputs = srcs + dep_archives,
-        command = cmd,
+        inputs = inputs,
+        executable = ctx.executable._builder,
+        arguments = [args],
         mnemonic = "GoCompile",
         use_default_shell_env = True,
     )
@@ -77,25 +79,109 @@ def go_link(ctx, out, main, deps = []):
         main: archive file for the main package.
         deps: list of GoLibrary objects for direct dependencies.
     """
-    deps_set = depset(
+    transitive_deps = depset(
         direct = [d.info for d in deps],
         transitive = [d.deps for d in deps],
     )
-    dep_lib_args = []
-    dep_archives = []
-    for dep in deps_set.to_list():
-        dep_lib_args.append("-L " + shell.quote(_search_dir(dep)))
-        dep_archives.append(dep.archive)
+    inputs = [main, ctx.file._stdimportcfg] + [d.archive for d in transitive_deps.to_list()]
 
-    cmd = "go tool link -o {out} {libs} -- {main}".format(
-        out = shell.quote(out.path),
-        libs = " ".join(dep_lib_args),
-        main = shell.quote(main.path),
-    )
-    ctx.actions.run_shell(
+    args = ctx.actions.args()
+    args.add("link")
+    args.add("-stdimportcfg", ctx.file._stdimportcfg)
+    args.add_all(transitive_deps, before_each = "-arc", map_each = _format_arc)
+    args.add("-main", main)
+    args.add("-o", out)
+
+    ctx.actions.run(
         outputs = [out],
-        inputs = [main] + dep_archives,
-        command = cmd,
+        inputs = inputs,
+        executable = ctx.executable._builder,
+        arguments = [args],
         mnemonic = "GoLink",
         use_default_shell_env = True,
     )
+
+def go_build_test(ctx, srcs, deps, out, rundir = "", importpath = ""):
+    """Compiles and links a Go test executable.
+
+    Args:
+        ctx: analysis context.
+        srcs: list of source Files to be compiled.
+        deps: list of GoLibrary objects for direct dependencies.
+        out: output executable file.
+        importpath: import path of the internal test archive.
+        rundir: directory the test should change to before executing.
+    """
+    direct_dep_infos = [d.info for d in deps]
+    transitive_dep_infos = depset(transitive = [d.deps for d in deps]).to_list()
+    inputs = (srcs +
+              [ctx.file._stdimportcfg] +
+              [d.archive for d in direct_dep_infos] +
+              [d.archive for d in transitive_dep_infos])
+
+    args = ctx.actions.args()
+    args.add("test")
+    args.add("-stdimportcfg", ctx.file._stdimportcfg)
+    args.add_all(direct_dep_infos, before_each = "-direct", map_each = _format_arc)
+    args.add_all(transitive_dep_infos, before_each = "-transitive", map_each = _format_arc)
+    if rundir != "":
+        args.add("-dir", rundir)
+    if importpath != "":
+        args.add("-p", importpath)
+    args.add("-o", out)
+    args.add_all(srcs)
+    
+    ctx.actions.run(
+        outputs = [out],
+        inputs = inputs,
+        executable = ctx.executable._builder,
+        arguments = [args],
+        mnemonic = "GoTest",
+        use_default_shell_env = True,
+    )
+
+def go_tool_build(ctx, srcs, out):
+    """Compiles and links a Go executable to be used in the toolchain.
+
+    Only allows a main package that depends on the standard library.
+    Does not support data or other dependencies.
+
+    Args:
+        ctx: analysis context.
+        srcs: list of source Files to be compiled.
+        out: output executable file.
+    """
+    cmd_tpl = ("go tool compile -o {out}.a {srcs} && " +
+               "go tool link -o {out} {out}.a")
+    cmd = cmd_tpl.format(
+        out = shell.quote(out.path),
+        srcs = " ".join([shell.quote(src.path) for src in srcs]),
+    )
+    ctx.actions.run_shell(
+        outputs = [out],
+        inputs = srcs,
+        command = cmd,
+        mnemonic = "GoToolBuild",
+        use_default_shell_env = True,
+    )
+
+def go_write_std_importcfg(ctx, out):
+    """Generates the importcfg mapping standard library import paths to
+    archive files. Every compile and link action needs this.
+
+    Args:
+        ctx: analysis context.
+        out: output importcfg file.
+    """
+    ctx.actions.run(
+        outputs = [out],
+        arguments = ["stdimportcfg", "-o", out.path],
+        executable = ctx.executable._builder,
+        mnemonic = "GoStdImportcfg",
+        use_default_shell_env = True,
+    )
+    
+
+def _format_arc(lib):
+    """Formats a GoLibrary.info object as an -arc argument"""
+    return "{}={}".format(lib.importpath, lib.archive.path)

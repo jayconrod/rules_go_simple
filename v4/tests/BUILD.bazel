@@ -1,9 +1,14 @@
-load("//v3:def.bzl", "go_binary", "go_library")
+load(
+    "//v4:def.bzl",
+    "go_binary",
+    "go_library",
+    "go_test",
+)
 
-sh_test(
+go_test(
     name = "hello_test",
-    srcs = ["hello_test.sh"],
-    args = ["$(location :hello)"],
+    srcs = ["hello_test.go"],
+    args = ["-hello=$(location :hello)"],
     data = [":hello"],
 )
 
@@ -15,9 +20,9 @@ go_binary(
     ],
 )
 
-sh_test(
+go_test(
     name = "bin_with_libs_test",
-    srcs = ["bin_with_libs_test.sh"],
+    srcs = ["bin_with_libs_test.go"],
     args = ["$(location :bin_with_libs)"],
     data = [":bin_with_libs"],
 )
@@ -31,7 +36,7 @@ go_binary(
 go_library(
     name = "foo",
     srcs = ["foo.go"],
-    importpath = "rules_go_simple/v3/tests/foo",
+    importpath = "rules_go_simple/v4/tests/foo",
     deps = [
         ":bar",
         ":baz",
@@ -41,19 +46,19 @@ go_library(
 go_library(
     name = "bar",
     srcs = ["bar.go"],
-    importpath = "rules_go_simple/v3/tests/bar",
+    importpath = "rules_go_simple/v4/tests/bar",
     deps = [":baz"],
 )
 
 go_library(
     name = "baz",
     srcs = ["baz.go"],
-    importpath = "rules_go_simple/v3/tests/baz",
+    importpath = "rules_go_simple/v4/tests/baz",
 )
 
-sh_test(
+go_test(
     name = "data_test",
-    srcs = ["data_test.sh"],
+    srcs = ["data_test.go"],
     args = ["$(location :list_data_bin)"],
     data = [":list_data_bin"],
 )
@@ -69,5 +74,15 @@ go_library(
     name = "list_data_lib",
     srcs = ["list_data_lib.go"],
     data = ["bar.txt"],
-    importpath = "rules_go_simple/v3/tests/list_data_lib"
+    importpath = "rules_go_simple/v4/tests/list_data_lib"
+)
+
+go_test(
+    name = "internal_external_test",
+    importpath = "rules_go_simple/v4/tests/ix",
+    srcs = [
+        "internal_external_lib.go",
+        "internal_test.go",
+        "external_test.go",
+    ],
 )

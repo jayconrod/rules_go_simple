@@ -7,8 +7,8 @@ package foo
 
 import (
 	"fmt"
-	"rules_go_simple/v3/tests/bar"
-	"rules_go_simple/v3/tests/baz"
+	"rules_go_simple/v4/tests/bar"
+	"rules_go_simple/v4/tests/baz"
 )
 
 func Foo() {

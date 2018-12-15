@@ -6,8 +6,11 @@
 load(
     ":actions.bzl",
     "declare_archive",
+    "go_build_test",
     "go_compile",
     "go_link",
+    "go_tool_build",
+    "go_write_std_importcfg",
 )
 load(":providers.bzl", "GoLibrary")
 
@@ -62,8 +65,49 @@ go_binary = rule(
             allow_files = True,
             doc = "Data files available to this binary at run-time",
         ),
+        "_builder": attr.label(
+            default = "//v4/internal/builder",
+            executable = True,
+            cfg = "host",
+        ),
+        "_stdimportcfg": attr.label(
+            default = "//v4/internal/builder:stdimportcfg",
+            allow_single_file = True,
+        ),
     },
     doc = "Builds an executable program from Go source code",
+    executable = True,
+)
+
+def _go_tool_binary_impl(ctx):
+    executable_path = "{name}%/{name}".format(name = ctx.label.name)
+    executable = ctx.actions.declare_file(executable_path)
+    go_tool_build(
+        ctx,
+        srcs = ctx.files.srcs,
+        out = executable,
+    )
+    return [DefaultInfo(
+        files = depset([executable]),
+        executable = executable,
+    )]
+
+go_tool_binary = rule(
+    implementation = _go_tool_binary_impl,
+    attrs = {
+        "srcs": attr.label_list(
+            allow_files = [".go"],
+            doc = "Source files to compile for the main package of this binary",
+        ),
+    },
+    doc = """Builds an executable program for the Go toolchain.
+
+go_tool_binary is a simple version of go_binary. It is separate from go_binary
+because go_binary relies on a program produced by this rule.
+
+This rule does not support dependencies or build constraints. All source files
+will be compiled, and they may only depend on the standard library.
+""",
     executable = True,
 )
 
@@ -73,6 +117,7 @@ def _go_library_impl(ctx):
     go_compile(
         ctx,
         srcs = ctx.files.srcs,
+        importpath = ctx.attr.importpath,
         deps = [dep[GoLibrary] for dep in ctx.attr.deps],
         out = archive,
     )
@@ -114,6 +159,87 @@ go_library = rule(
             mandatory = True,
             doc = "Name by which the library may be imported",
         ),
+        "_builder": attr.label(
+            default = "//v4/internal/builder",
+            executable = True,
+            cfg = "host",
+        ),
+        "_stdimportcfg": attr.label(
+            default = "//v4/internal/builder:stdimportcfg",
+            allow_single_file = True,
+        ),
     },
     doc = "Compiles a Go archive from Go sources and dependencies",
+)
+
+def _go_test_impl(ctx):
+    executable_path = "{name}%/{name}".format(name = ctx.label.name)
+    executable = ctx.actions.declare_file(executable_path)
+    go_build_test(
+        ctx,
+        srcs = ctx.files.srcs,
+        deps = [dep[GoLibrary] for dep in ctx.attr.deps],
+        out = executable,
+        importpath = ctx.attr.importpath,
+        rundir = ctx.label.package,
+    )
+
+    return [DefaultInfo(
+        files = depset([executable]),
+        runfiles = ctx.runfiles(collect_data = True),
+        executable = executable,
+    )]
+
+go_test = rule(
+    implementation = _go_test_impl,
+    attrs = {
+        "srcs": attr.label_list(
+            allow_files = [".go"],
+            doc = ("Source files to compile for this test. " +
+                   "May be a mix of internal and external tests."),
+        ),
+        "deps": attr.label_list(
+            providers = [GoLibrary],
+            doc = "Direct dependencies of the test",
+        ),
+        "data": attr.label_list(
+            allow_files = True,
+            doc = "Data files available to this test",
+        ),
+        "importpath": attr.string(
+            default = "",
+            doc = "Name by which test archives may be imported (optional)",
+        ),
+        "_builder": attr.label(
+            default = "//v4/internal/builder",
+            executable = True,
+            cfg = "host",
+        ),
+        "_stdimportcfg": attr.label(
+            default = "//v4/internal/builder:stdimportcfg",
+            allow_single_file = True,
+        ),
+    },
+    doc = """Compiles and links a Go test executable. Functions with names
+starting with "Test" in files with names ending in "_test.go" will be called
+using the go "testing" framework.""",
+    test = True,
+)
+
+def _go_std_importcfg_impl(ctx):
+    f = ctx.actions.declare_file(ctx.label.name + ".txt")
+    go_write_std_importcfg(ctx, f)
+    return [DefaultInfo(files = depset([f]))]
+
+go_std_importcfg = rule(
+    _go_std_importcfg_impl,
+    attrs = {
+        "_builder": attr.label(
+            default = "//v4/internal/builder",
+            executable = True,
+            cfg = "host",
+        ),
+    },
+    doc = """Generates an importcfg file for the Go standard library.
+importcfg files map Go package paths to file paths.""",
 )

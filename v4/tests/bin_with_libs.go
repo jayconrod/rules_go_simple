@@ -5,7 +5,7 @@
 
 package main
 
-import "rules_go_simple/v3/tests/foo"
+import "rules_go_simple/v4/tests/foo"
 
 func main() {
 	foo.Foo()

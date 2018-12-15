@@ -3,14 +3,12 @@
 // This file is part of rules_go_simple. Use of this source code is governed by
 // the 3-clause BSD license that can be found in the LICENSE.txt file.
 
-package bar
+package ix
 
-import (
-	"fmt"
-	"rules_go_simple/v4/tests/baz"
-)
+import "testing"
 
-func Bar() {
-	fmt.Println("bar")
-	baz.Baz()
+func Foo() string { return "foo" }
+
+func TestLib(t *testing.T) {
+	t.Error("TestLib should not be called")
 }
