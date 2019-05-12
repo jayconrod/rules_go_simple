@@ -7,5 +7,16 @@
 # building Go programs. These definitions should be loaded from here and
 # not any internal directory.
 
-load("//v2/internal:rules.bzl", "go_binary", "go_library")
-load("//v2/internal:providers.bzl", "GoLibrary")
+load(
+    "//v2/internal:rules.bzl",
+    _go_binary = "go_binary",
+    _go_library = "go_library",
+)
+load(
+    "//v2/internal:providers.bzl",
+    _GoLibrary = "GoLibrary",
+)
+
+go_binary = _go_binary
+go_library = _go_library
+GoLibrary = _GoLibrary

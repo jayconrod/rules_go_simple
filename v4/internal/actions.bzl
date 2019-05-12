@@ -140,7 +140,7 @@ def go_build_test(ctx, srcs, deps, out, rundir = "", importpath = ""):
         use_default_shell_env = True,
     )
 
-def go_tool_build(ctx, srcs, out):
+def go_build_tool(ctx, srcs, out):
     """Compiles and links a Go executable to be used in the toolchain.
 
     Only allows a main package that depends on the standard library.
@@ -165,7 +165,7 @@ def go_tool_build(ctx, srcs, out):
         use_default_shell_env = True,
     )
 
-def go_write_std_importcfg(ctx, out):
+def go_write_stdimportcfg(ctx, out):
     """Generates the importcfg mapping standard library import paths to
     archive files. Every compile and link action needs this.
 

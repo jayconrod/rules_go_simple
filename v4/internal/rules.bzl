@@ -9,8 +9,8 @@ load(
     "go_build_test",
     "go_compile",
     "go_link",
-    "go_tool_build",
-    "go_write_std_importcfg",
+    "go_build_tool",
+    "go_write_stdimportcfg",
 )
 load(":providers.bzl", "GoLibrary")
 
@@ -82,7 +82,7 @@ go_binary = rule(
 def _go_tool_binary_impl(ctx):
     executable_path = "{name}%/{name}".format(name = ctx.label.name)
     executable = ctx.actions.declare_file(executable_path)
-    go_tool_build(
+    go_build_tool(
         ctx,
         srcs = ctx.files.srcs,
         out = executable,
@@ -226,13 +226,13 @@ using the go "testing" framework.""",
     test = True,
 )
 
-def _go_std_importcfg_impl(ctx):
+def _go_stdimportcfg_impl(ctx):
     f = ctx.actions.declare_file(ctx.label.name + ".txt")
-    go_write_std_importcfg(ctx, f)
+    go_write_stdimportcfg(ctx, f)
     return [DefaultInfo(files = depset([f]))]
 
-go_std_importcfg = rule(
-    _go_std_importcfg_impl,
+go_stdimportcfg = rule(
+    implementation = _go_stdimportcfg_impl,
     attrs = {
         "_builder": attr.label(
             default = "//v4/internal/builder",

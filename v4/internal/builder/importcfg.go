@@ -27,6 +27,12 @@ func stdImportcfg(args []string) (err error) {
 	fs.Parse(args)
 
 	// Use "go list" to list the packages and locate the archives.
+	cache, err := ioutil.TempDir("", "gocache")
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(cache)
+	os.Setenv("GOCACHE", cache)
 	cmd := exec.Command("go", "list", "-json", "std")
 	cmd.Stderr = os.Stderr
 	data, err := cmd.Output()
