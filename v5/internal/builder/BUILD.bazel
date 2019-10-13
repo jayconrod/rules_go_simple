@@ -1,0 +1,17 @@
+# builder_srcs is a list of source files used to create the builder binary.
+# Each Go distribution will create its own builder with these source files,
+# using its own compiler, linker, and standard library.
+filegroup(
+    name = "builder_srcs",
+    srcs = [
+        "builder.go",
+        "compile.go",
+        "env.go",
+        "flags.go",
+        "importcfg.go",
+        "link.go",
+        "sourceinfo.go",
+        "test.go",
+    ],
+    visibility = ["//visibility:public"],
+)

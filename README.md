@@ -19,3 +19,6 @@ version is documented in a series of blog posts at
 * **v4**: Moves most of the implementation out of Starlark into a
   "builder" binary. Described in
   [Moving logic to execution](https://jayconrod.com/posts/109/writing-bazel-rules--moving-logic-to-execution).
+* **v5**: Downloads the Go distribution and registers a Bazel toolchain.
+  Described in
+  [Repository rules](https://jayconrod.com/posts/110/writing-bazel-rules--repository-rules).
