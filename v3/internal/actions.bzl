@@ -3,7 +3,7 @@
 # This file is part of rules_go_simple. Use of this source code is governed by
 # the 3-clause BSD license that can be found in the LICENSE.txt file.
 
-load("@bazel_skylib//:lib.bzl", "shell")
+load("@bazel_skylib//lib:shell.bzl", "shell")
 
 def declare_archive(ctx, importpath):
     """Declares a new .a file the compiler should produce, following a naming
