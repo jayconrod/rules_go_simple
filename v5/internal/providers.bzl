@@ -15,6 +15,10 @@ GoLibrary = provider(
     },
 )
 
+# GoToolchain is a dummy provider that serves as documentation for the
+# public interface of the ToolchainInfo provide returned by go_toolchain.
+# Toolchains compatible with @rules_go_simple//v5:toolchain_type must
+# satisfy this interface. However, no GoToolchain object is actually created.
 GoToolchain = provider(
     doc = "Contains information about a Go toolchain",
     fields = {

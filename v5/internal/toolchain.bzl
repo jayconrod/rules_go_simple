@@ -8,10 +8,6 @@ load(
     "paths",
 )
 load(
-    ":providers.bzl",
-    "GoToolchain",
-)
-load(
     ":actions.bzl",
     "go_build_test",
     "go_compile",
