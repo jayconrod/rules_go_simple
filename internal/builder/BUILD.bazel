@@ -1,7 +1,7 @@
 load(
     "//internal:rules.bzl",
-    "go_tool_binary",
     "go_stdimportcfg",
+    "go_tool_binary",
 )
 
 package(default_visibility = ["//visibility:public"])

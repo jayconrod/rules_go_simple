@@ -3,16 +3,23 @@
 # This file is part of rules_go_simple. Use of this source code is governed by
 # the 3-clause BSD license that can be found in the LICENSE.txt file.
 
+"""Rules for building Go programs.
+
+Rules take a description of something to build (for example, the sources and
+dependencies of a library) and create a plan of how to build it (output files,
+actions).
+"""
+
 load(
     ":actions.bzl",
     "declare_archive",
     "go_build_test",
+    "go_build_tool",
     "go_compile",
     "go_link",
-    "go_build_tool",
     "go_write_stdimportcfg",
 )
-load(":providers.bzl", "GoLibrary")
+load(":providers.bzl", "GoLibraryInfo")
 
 def _go_binary_impl(ctx):
     # Declare an output file for the main package and compile it from srcs. All
@@ -22,7 +29,7 @@ def _go_binary_impl(ctx):
     go_compile(
         ctx,
         srcs = ctx.files.srcs,
-        deps = [dep[GoLibrary] for dep in ctx.attr.deps],
+        deps = [dep[GoLibraryInfo] for dep in ctx.attr.deps],
         out = main_archive,
     )
 
@@ -34,7 +41,7 @@ def _go_binary_impl(ctx):
     go_link(
         ctx,
         main = main_archive,
-        deps = [dep[GoLibrary] for dep in ctx.attr.deps],
+        deps = [dep[GoLibraryInfo] for dep in ctx.attr.deps],
         out = executable,
     )
 
@@ -58,7 +65,7 @@ go_binary = rule(
             doc = "Source files to compile for the main package of this binary",
         ),
         "deps": attr.label_list(
-            providers = [GoLibrary],
+            providers = [GoLibraryInfo],
             doc = "Direct dependencies of the binary",
         ),
         "data": attr.label_list(
@@ -118,7 +125,7 @@ def _go_library_impl(ctx):
         ctx,
         srcs = ctx.files.srcs,
         importpath = ctx.attr.importpath,
-        deps = [dep[GoLibrary] for dep in ctx.attr.deps],
+        deps = [dep[GoLibraryInfo] for dep in ctx.attr.deps],
         out = archive,
     )
 
@@ -128,14 +135,14 @@ def _go_library_impl(ctx):
             files = depset([archive]),
             runfiles = ctx.runfiles(collect_data = True),
         ),
-        GoLibrary(
+        GoLibraryInfo(
             info = struct(
                 importpath = ctx.attr.importpath,
                 archive = archive,
             ),
             deps = depset(
-                direct = [dep[GoLibrary].info for dep in ctx.attr.deps],
-                transitive = [dep[GoLibrary].deps for dep in ctx.attr.deps],
+                direct = [dep[GoLibraryInfo].info for dep in ctx.attr.deps],
+                transitive = [dep[GoLibraryInfo].deps for dep in ctx.attr.deps],
             ),
         ),
     ]
@@ -148,7 +155,7 @@ go_library = rule(
             doc = "Source files to compile",
         ),
         "deps": attr.label_list(
-            providers = [GoLibrary],
+            providers = [GoLibraryInfo],
             doc = "Direct dependencies of the library",
         ),
         "data": attr.label_list(
@@ -178,7 +185,7 @@ def _go_test_impl(ctx):
     go_build_test(
         ctx,
         srcs = ctx.files.srcs,
-        deps = [dep[GoLibrary] for dep in ctx.attr.deps],
+        deps = [dep[GoLibraryInfo] for dep in ctx.attr.deps],
         out = executable,
         importpath = ctx.attr.importpath,
         rundir = ctx.label.package,
@@ -199,7 +206,7 @@ go_test = rule(
                    "May be a mix of internal and external tests."),
         ),
         "deps": attr.label_list(
-            providers = [GoLibrary],
+            providers = [GoLibraryInfo],
             doc = "Direct dependencies of the test",
         ),
         "data": attr.label_list(
