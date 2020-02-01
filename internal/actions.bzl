@@ -3,6 +3,13 @@
 # This file is part of rules_go_simple. Use of this source code is governed by
 # the 3-clause BSD license that can be found in the LICENSE.txt file.
 
+"""Common functions for creating actions to build Go programs.
+
+Rules should determine input and output files and providers, but they should
+call functions to create actions. This allows action code to be shared
+by multiple rules.
+"""
+
 load("@bazel_skylib//lib:shell.bzl", "shell")
 
 def go_compile(ctx, srcs, out):
