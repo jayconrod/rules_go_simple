@@ -1,0 +1,88 @@
+load(
+    "//:def.bzl",
+    "go_binary",
+    "go_library",
+    "go_test",
+)
+
+go_test(
+    name = "hello_test",
+    srcs = ["hello_test.go"],
+    args = ["-hello=$(location :hello)"],
+    data = [":hello"],
+)
+
+go_binary(
+    name = "hello",
+    srcs = [
+        "hello.go",
+        "message.go",
+    ],
+)
+
+go_test(
+    name = "bin_with_libs_test",
+    srcs = ["bin_with_libs_test.go"],
+    args = ["$(location :bin_with_libs)"],
+    data = [":bin_with_libs"],
+)
+
+go_binary(
+    name = "bin_with_libs",
+    srcs = ["bin_with_libs.go"],
+    deps = [":foo"],
+)
+
+go_library(
+    name = "foo",
+    srcs = ["foo.go"],
+    importpath = "rules_go_simple/tests/foo",
+    deps = [
+        ":bar",
+        ":baz",
+    ],
+)
+
+go_library(
+    name = "bar",
+    srcs = ["bar.go"],
+    importpath = "rules_go_simple/tests/bar",
+    deps = [":baz"],
+)
+
+go_library(
+    name = "baz",
+    srcs = ["baz.go"],
+    importpath = "rules_go_simple/tests/baz",
+)
+
+go_test(
+    name = "data_test",
+    srcs = ["data_test.go"],
+    args = ["$(location :list_data_bin)"],
+    data = [":list_data_bin"],
+)
+
+go_binary(
+    name = "list_data_bin",
+    srcs = ["list_data_bin.go"],
+    deps = [":list_data_lib"],
+    data = ["foo.txt"],
+)
+
+go_library(
+    name = "list_data_lib",
+    srcs = ["list_data_lib.go"],
+    data = ["bar.txt"],
+    importpath = "rules_go_simple/tests/list_data_lib"
+)
+
+go_test(
+    name = "internal_external_test",
+    importpath = "rules_go_simple/tests/ix",
+    srcs = [
+        "internal_external_lib.go",
+        "internal_test.go",
+        "external_test.go",
+    ],
+)
