@@ -3,7 +3,12 @@
 # This file is part of rules_go_simple. Use of this source code is governed by
 # the 3-clause BSD license that can be found in the LICENSE.txt file.
 
-load("@bazel_skylib//lib:shell.bzl", "shell")
+"""Common functions for creating actions to build Go programs.
+
+Rules should determine input and output files and providers, but they should
+call functions to create actions. This allows action code to be shared
+by multiple rules.
+"""
 
 def go_compile(ctx, srcs, out, importpath = "", deps = []):
     """Compiles a single Go package from sources.
@@ -13,7 +18,7 @@ def go_compile(ctx, srcs, out, importpath = "", deps = []):
         srcs: list of source Files to be compiled.
         out: output .a File.
         importpath: the path other libraries may use to import this package.
-        deps: list of GoLibrary objects for direct dependencies.
+        deps: list of GoLibraryInfo objects for direct dependencies.
     """
     toolchain = ctx.toolchains["@rules_go_simple//:toolchain_type"]
 
@@ -48,7 +53,7 @@ def go_link(ctx, out, main, deps = []):
         ctx: analysis context.
         out: output executable file.
         main: archive file for the main package.
-        deps: list of GoLibrary objects for direct dependencies.
+        deps: list of GoLibraryInfo objects for direct dependencies.
     """
     toolchain = ctx.toolchains["@rules_go_simple//:toolchain_type"]
 
@@ -83,7 +88,7 @@ def go_build_test(ctx, srcs, deps, out, rundir = "", importpath = ""):
     Args:
         ctx: analysis context.
         srcs: list of source Files to be compiled.
-        deps: list of GoLibrary objects for direct dependencies.
+        deps: list of GoLibraryInfo objects for direct dependencies.
         out: output executable file.
         importpath: import path of the internal test archive.
         rundir: directory the test should change to before executing.
@@ -120,5 +125,5 @@ def go_build_test(ctx, srcs, deps, out, rundir = "", importpath = ""):
     )
 
 def _format_arc(lib):
-    """Formats a GoLibrary.info object as an -arc argument"""
+    """Formats a GoLibraryInfo.info object as an -arc argument"""
     return "{}={}".format(lib.importpath, lib.archive.path)
