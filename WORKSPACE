@@ -8,11 +8,11 @@
 # Each workspace should set a canonical name. This is the name other workspaces
 # may use to import it (via an http_archive rule or something similar).
 # It's also the name used in labels that refer to this workspace
-# (for example @rules_go_simple//v5:deps.bzl).
+# (for example @rules_go_simple//:deps.bzl).
 workspace(name = "rules_go_simple")
 
 load(
-    "@rules_go_simple//v5:deps.bzl",
+    "@rules_go_simple//:deps.bzl",
     "go_download",
     "go_rules_dependencies",
 )
