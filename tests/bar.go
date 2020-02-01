@@ -3,10 +3,14 @@
 // This file is part of rules_go_simple. Use of this source code is governed by
 // the 3-clause BSD license that can be found in the LICENSE.txt file.
 
-package main
+package bar
 
-import "rules_go_simple/v2/tests/foo"
+import (
+	"fmt"
+	"rules_go_simple/tests/baz"
+)
 
-func main() {
-	foo.Foo()
+func Bar() {
+	fmt.Println("bar")
+	baz.Baz()
 }

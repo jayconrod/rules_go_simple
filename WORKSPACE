@@ -7,6 +7,6 @@
 
 workspace(name = "rules_go_simple")
 
-load("@rules_go_simple//v2:deps.bzl", "go_rules_dependencies")
+load(":deps.bzl", "go_rules_dependencies")
 
 go_rules_dependencies()

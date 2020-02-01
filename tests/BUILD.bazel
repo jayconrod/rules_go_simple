@@ -1,4 +1,4 @@
-load("//v2:def.bzl", "go_binary", "go_library")
+load("//:def.bzl", "go_binary", "go_library")
 
 sh_test(
     name = "hello_test",
@@ -31,7 +31,7 @@ go_binary(
 go_library(
     name = "foo",
     srcs = ["foo.go"],
-    importpath = "rules_go_simple/v2/tests/foo",
+    importpath = "rules_go_simple/tests/foo",
     deps = [
         ":bar",
         ":baz",
@@ -41,12 +41,12 @@ go_library(
 go_library(
     name = "bar",
     srcs = ["bar.go"],
-    importpath = "rules_go_simple/v2/tests/bar",
+    importpath = "rules_go_simple/tests/bar",
     deps = [":baz"],
 )
 
 go_library(
     name = "baz",
     srcs = ["baz.go"],
-    importpath = "rules_go_simple/v2/tests/baz",
+    importpath = "rules_go_simple/tests/baz",
 )
