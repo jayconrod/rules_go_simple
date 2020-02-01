@@ -3,11 +3,17 @@
 # This file is part of rules_go_simple. Use of this source code is governed by
 # the 3-clause BSD license that can be found in the LICENSE.txt file.
 
+"""Common functions for creating actions to build Go programs.
+
+Rules should determine input and output files and providers, but they should
+call functions to create actions. This allows action code to be shared
+by multiple rules.
+"""
+
 load("@bazel_skylib//lib:shell.bzl", "shell")
 
 def declare_archive(ctx, importpath):
-    """Declares a new .a file the compiler should produce, following a naming
-    convention.
+    """Declares a new .a file the compiler should produce.
 
     .a files are consumed by the compiler (for dependency type information)
     and the linker. Both tools locate archives using lists of search paths.
@@ -26,12 +32,14 @@ def declare_archive(ctx, importpath):
     ))
 
 def _search_dir(info):
-    """Returns a directory that should be searched (by -I to the compiler
-    or -L to the linker) to find the archive file for a library. The archive
+    """Returns a directory that should be searched.
+
+    This directory is passed to the compiler or linker with the -I and -L flags,
+    respectively, to find the archive file for a library. The archive
     must have been declared with declare_archive.
 
     Args:
-        info: GoLibrary.info for this library.
+        info: GoLibraryInfo.info for this library.
     Returns:
         A path string for the directory.
     """
@@ -47,7 +55,7 @@ def go_compile(ctx, srcs, out, deps = []):
         out: output .a file. Should have the importpath as a suffix,
             for example, library "example.com/foo" should have the path
             "somedir/example.com/foo.a".
-        deps: list of GoLibrary objects for direct dependencies.
+        deps: list of GoLibraryInfo objects for direct dependencies.
     """
     dep_import_args = []
     dep_archives = []
@@ -75,7 +83,7 @@ def go_link(ctx, out, main, deps = []):
         ctx: analysis context.
         out: output executable file.
         main: archive file for the main package.
-        deps: list of GoLibrary objects for direct dependencies.
+        deps: list of GoLibraryInfo objects for direct dependencies.
     """
     deps_set = depset(
         direct = [d.info for d in deps],

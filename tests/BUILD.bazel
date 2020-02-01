@@ -61,13 +61,13 @@ sh_test(
 go_binary(
     name = "list_data_bin",
     srcs = ["list_data_bin.go"],
-    deps = [":list_data_lib"],
     data = ["foo.txt"],
+    deps = [":list_data_lib"],
 )
 
 go_library(
     name = "list_data_lib",
     srcs = ["list_data_lib.go"],
     data = ["bar.txt"],
-    importpath = "rules_go_simple/tests/list_data_lib"
+    importpath = "rules_go_simple/tests/list_data_lib",
 )
