@@ -1,4 +1,4 @@
-load("//v1:def.bzl", "go_binary")
+load("//:def.bzl", "go_binary")
 
 sh_test(
     name = "hello_test",
