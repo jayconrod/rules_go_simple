@@ -46,7 +46,7 @@ def _go_binary_impl(ctx):
 # phase when this file is loaded. The function body above is evaluated only
 # during the analysis phase.
 go_binary = rule(
-    _go_binary_impl,
+    implementation = _go_binary_impl,
     attrs = {
         "srcs": attr.label_list(
             allow_files = [".go"],
