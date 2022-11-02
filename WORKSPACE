@@ -24,28 +24,28 @@ go_rules_dependencies()
 # These rules download Go distributions for macOS and Linux.
 # They are lazily evaluated, so they won't actually download anything until
 # we depend on a target inside these workspaces. We register toolchains
-# below though, so that forces both downloads. We could be more clever
+# below though, so that forces downloads. We could be more clever
 # about registering only the toolchain we need.
 go_download(
-    name = "go_darwin_amd64",
-    goarch = "amd64",
+    name = "go_darwin_arm64",
+    goarch = "arm64",
     goos = "darwin",
-    sha256 = "a9088c44a984c4ba64179619606cc65d9d0cb92988012cfc94fbb29ca09edac7",
-    urls = ["https://dl.google.com/go/go1.13.4.darwin-amd64.tar.gz"],
+    sha256 = "49e394ab92bc6fa3df3d27298ddf3e4491f99477bee9dd4934525a526f3a391c",
+    urls = ["https://go.dev/dl/go1.19.3.darwin-arm64.tar.gz"],
 )
 
 go_download(
     name = "go_linux_amd64",
     goarch = "amd64",
     goos = "linux",
-    sha256 = "692d17071736f74be04a72a06dab9cac1cd759377bd85316e52b2227604c004c",
-    urls = ["https://dl.google.com/go/go1.13.4.linux-amd64.tar.gz"],
+    sha256 = "74b9640724fd4e6bb0ed2a1bc44ae813a03f1e72a4c76253e2d5c015494430ba",
+    urls = ["https://go.dev/dl/go1.19.3.linux-amd64.tar.gz"],
 )
 
 # register_toolchains makes one or more toolchain rules available for Bazel's
 # automatic toolchain selection. Bazel will pick whichever toolchain is
 # compatible with the execution and target platforms.
 register_toolchains(
-    "@go_darwin_amd64//:toolchain",
+    "@go_darwin_arm64//:toolchain",
     "@go_linux_amd64//:toolchain",
 )

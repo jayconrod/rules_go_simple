@@ -5,12 +5,18 @@
 
 def _go_download_impl(ctx):
     # Download the Go distribution.
+    # Execute 'tar x' explicitly instead of using ctx.download_and_extract.
+    # The Go archive contains test files with invalid unicode names,
+    # which ctx.download_and_extract does not tolerate.
     ctx.report_progress("downloading")
-    ctx.download_and_extract(
+    ctx.download(
         ctx.attr.urls,
         sha256 = ctx.attr.sha256,
-        stripPrefix = "go",
+        output = "go.tar.gz",
     )
+    ctx.report_progress("extracting")
+    ctx.execute(["tar", "xf", "go.tar.gz", "--strip-components=1"])
+    ctx.delete("go.tar.gz")
 
     # Add a build file to the repository root directory.
     # We need to fill in some template parameters, based on the platform.
@@ -25,6 +31,8 @@ def _go_download_impl(ctx):
         fail("unsupported goos: " + ctx.attr.goos)
     if ctx.attr.goarch == "amd64":
         arch_constraint = "@platforms//cpu:x86_64"
+    elif ctx.attr.goarch == "arm64":
+        arch_constraint = "@platforms//cpu:arm64"
     else:
         fail("unsupported arch: " + ctx.attr.goarch)
     constraints = [os_constraint, arch_constraint]
@@ -61,7 +69,7 @@ go_download = repository_rule(
         ),
         "goarch": attr.string(
             mandatory = True,
-            values = ["amd64"],
+            values = ["amd64", "arm64"],
             doc = "Host architecture for the Go distribution",
         ),
         "_build_tpl": attr.label(
