@@ -71,7 +71,7 @@ go_toolchain = rule(
         "builder": attr.label(
             mandatory = True,
             executable = True,
-            cfg = "host",
+            cfg = "exec",
             doc = "Executable that performs most actions",
         ),
         "tools": attr.label_list(
