@@ -31,21 +31,6 @@ def declare_archive(ctx, importpath):
         importpath = importpath,
     ))
 
-def _search_dir(info):
-    """Returns a directory that should be searched.
-
-    This directory is passed to the compiler or linker with the -I and -L flags,
-    respectively, to find the archive file for a library. The archive
-    must have been declared with declare_archive.
-
-    Args:
-        info: GoLibraryInfo.info for this library.
-    Returns:
-        A path string for the directory.
-    """
-    suffix_len = len("/" + info.importpath + ".a")
-    return info.archive.path[:-suffix_len]
-
 def go_compile(ctx, srcs, out, importpath = "", deps = []):
     """Compiles a single Go package from sources.
 

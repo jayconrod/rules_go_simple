@@ -75,7 +75,7 @@ go_binary = rule(
         "_builder": attr.label(
             default = "//internal/builder",
             executable = True,
-            cfg = "host",
+            cfg = "exec",
         ),
         "_stdimportcfg": attr.label(
             default = "//internal/builder:stdimportcfg",
@@ -169,7 +169,7 @@ go_library = rule(
         "_builder": attr.label(
             default = "//internal/builder",
             executable = True,
-            cfg = "host",
+            cfg = "exec",
         ),
         "_stdimportcfg": attr.label(
             default = "//internal/builder:stdimportcfg",
@@ -220,7 +220,7 @@ go_test = rule(
         "_builder": attr.label(
             default = "//internal/builder",
             executable = True,
-            cfg = "host",
+            cfg = "exec",
         ),
         "_stdimportcfg": attr.label(
             default = "//internal/builder:stdimportcfg",
@@ -244,7 +244,7 @@ go_stdimportcfg = rule(
         "_builder": attr.label(
             default = "//internal/builder",
             executable = True,
-            cfg = "host",
+            cfg = "exec",
         ),
     },
     doc = """Generates an importcfg file for the Go standard library.
