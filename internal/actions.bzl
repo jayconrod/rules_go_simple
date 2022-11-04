@@ -26,13 +26,7 @@ def go_compile(ctx, srcs, out):
         out = shell.quote(out.path),
         srcs = " ".join([shell.quote(src.path) for src in srcs]),
     )
-    ctx.actions.run_shell(
-        outputs = [out],
-        inputs = srcs,
-        command = cmd,
-        mnemonic = "GoCompile",
-        use_default_shell_env = True,
-    )
+    # EXERCISE: create action
 
 def go_link(ctx, out, main):
     """Links a Go executable.
@@ -46,10 +40,4 @@ def go_link(ctx, out, main):
         out = shell.quote(out.path),
         main = shell.quote(main.path),
     )
-    ctx.actions.run_shell(
-        outputs = [out],
-        inputs = [main],
-        command = cmd,
-        mnemonic = "GoLink",
-        use_default_shell_env = True,
-    )
+    # EXERCISE: create action
