@@ -46,14 +46,9 @@ def _go_binary_impl(ctx):
     # Return the DefaultInfo provider. This tells Bazel what files should be
     # built when someone asks to build a go_binary rule. It also says which
     # file is executable (in this case, there's only one).
-    runfiles = _collect_runfiles(
-        ctx,
-        direct_files = ctx.files.data,
-        indirect_targets = ctx.attr.data + ctx.attr.deps,
-    )
     return [DefaultInfo(
         files = depset([executable]),
-        runfiles = runfiles,
+        # EXERCISE: create and return a runfiles instance.
         executable = executable,
     )]
 
@@ -71,10 +66,7 @@ go_binary = rule(
             providers = [GoLibraryInfo],
             doc = "Direct dependencies of the binary",
         ),
-        "data": attr.label_list(
-            allow_files = True,
-            doc = "Data files available to this binary at run-time",
-        ),
+        # EXERCISE: add a data attribute
     },
     doc = "Builds an executable program from Go source code",
     executable = True,
@@ -92,15 +84,10 @@ def _go_library_impl(ctx):
     )
 
     # Return the output file and metadata about the library.
-    runfiles = _collect_runfiles(
-        ctx,
-        direct_files = ctx.files.data,
-        indirect_targets = ctx.attr.data + ctx.attr.deps,
-    )
     return [
         DefaultInfo(
             files = depset([archive]),
-            runfiles = runfiles,
+            # EXERCISE: create and return a runfiles instance.
         ),
         GoLibraryInfo(
             info = struct(
@@ -125,10 +112,7 @@ go_library = rule(
             providers = [GoLibraryInfo],
             doc = "Direct dependencies of the library",
         ),
-        "data": attr.label_list(
-            allow_files = True,
-            doc = "Data files available to binaries using this library",
-        ),
+        # EXERCISE: add a data attribute
         "importpath": attr.string(
             mandatory = True,
             doc = "Name by which the library may be imported",
@@ -136,22 +120,3 @@ go_library = rule(
     },
     doc = "Compiles a Go archive from Go sources and dependencies",
 )
-
-def _collect_runfiles(ctx, direct_files, indirect_targets):
-    """Builds a runfiles object for the current target.
-
-    Args:
-        ctx: analysis context.
-        direct_files: list of Files to include directly.
-        indirect_targets: list of Targets to gather transitive runfiles from.
-    Returns:
-        A runfiles object containing direct_files and runfiles from
-        indirect_targets. The files from indirect_targets won't be included
-        unless they are also included in runfiles.
-    """
-    return ctx.runfiles(
-        files = direct_files,
-        transitive_files = depset(
-            transitive = [target[DefaultInfo].default_runfiles.files for target in indirect_targets],
-        ),
-    )
