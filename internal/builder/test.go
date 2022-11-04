@@ -227,7 +227,7 @@ func main() {
 		log.Fatalf("could not change to test directory: %v", err)
 	}
 
-	m := testing.MainStart(testdeps.TestDeps{}, allTests, nil, nil)
+	m := testing.MainStart(testdeps.TestDeps{}, allTests, nil, nil, nil)
 {{if .TestMainPackageName}}
 	{{.TestMainPackageName}}.TestMain(m)
 {{else}}
