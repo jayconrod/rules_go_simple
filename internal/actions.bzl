@@ -46,11 +46,12 @@ def _search_dir(info):
     suffix_len = len("/" + info.importpath + ".a")
     return info.archive.path[:-suffix_len]
 
-def go_compile(ctx, srcs, out, deps = []):
+def go_compile(ctx, importpath, srcs, out, deps = []):
     """Compiles a single Go package from sources.
 
     Args:
         ctx: analysis context.
+        importpath: name by which the package will be imported.
         srcs: list of source Files to be compiled.
         out: output .a file. Should have the importpath as a suffix,
             for example, library "example.com/foo" should have the path
@@ -63,7 +64,8 @@ def go_compile(ctx, srcs, out, deps = []):
         dep_import_args.append("-I " + shell.quote(_search_dir(dep.info)))
         dep_archives.append(dep.info.archive)
 
-    cmd = "go tool compile -o {out} {imports} -- {srcs}".format(
+    cmd = "go tool compile -p {importpath} -o {out} {imports} -- {srcs}".format(
+        importpath = importpath,
         out = shell.quote(out.path),
         imports = " ".join(dep_import_args),
         srcs = " ".join([shell.quote(src.path) for src in srcs]),

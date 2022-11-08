@@ -25,6 +25,7 @@ def _go_binary_impl(ctx):
     main_archive = declare_archive(ctx, "main")
     go_compile(
         ctx,
+        importpath = "main",
         srcs = ctx.files.srcs,
         deps = [dep[GoLibraryInfo] for dep in ctx.attr.deps],
         out = main_archive,
@@ -79,6 +80,7 @@ def _go_library_impl(ctx):
     archive = declare_archive(ctx, ctx.attr.importpath)
     go_compile(
         ctx,
+        importpath = ctx.attr.importpath,
         srcs = ctx.files.srcs,
         deps = [dep[GoLibraryInfo] for dep in ctx.attr.deps],
         out = archive,
