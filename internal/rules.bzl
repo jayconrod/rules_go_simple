@@ -46,11 +46,16 @@ def _go_binary_impl(ctx):
     )
 
     # Return the DefaultInfo provider. This tells Bazel what files should be
-    # built when someone asks to build a go_binary rules. It also says which
-    # one is executable (in this case, there's only one).
+    # built when someone asks to build a go_binary rule. It also says which
+    # file is executable (in this case, there's only one).
+    runfiles = _collect_runfiles(
+        ctx,
+        direct_files = ctx.files.data,
+        indirect_targets = ctx.attr.data + ctx.attr.deps,
+    )
     return [DefaultInfo(
         files = depset([executable]),
-        runfiles = ctx.runfiles(collect_data = True),
+        runfiles = runfiles,
         executable = executable,
     )]
 
@@ -130,10 +135,15 @@ def _go_library_impl(ctx):
     )
 
     # Return the output file and metadata about the library.
+    runfiles = _collect_runfiles(
+        ctx,
+        direct_files = ctx.files.data,
+        indirect_targets = ctx.attr.data + ctx.attr.deps,
+    )
     return [
         DefaultInfo(
             files = depset([archive]),
-            runfiles = ctx.runfiles(collect_data = True),
+            runfiles = runfiles,
         ),
         GoLibraryInfo(
             info = struct(
@@ -191,9 +201,14 @@ def _go_test_impl(ctx):
         rundir = ctx.label.package,
     )
 
+    runfiles = _collect_runfiles(
+        ctx,
+        direct_files = ctx.files.data,
+        indirect_targets = ctx.attr.data + ctx.attr.deps,
+    )
     return [DefaultInfo(
         files = depset([executable]),
-        runfiles = ctx.runfiles(collect_data = True),
+        runfiles = runfiles,
         executable = executable,
     )]
 
@@ -250,3 +265,22 @@ go_stdimportcfg = rule(
     doc = """Generates an importcfg file for the Go standard library.
 importcfg files map Go package paths to file paths.""",
 )
+
+def _collect_runfiles(ctx, direct_files, indirect_targets):
+    """Builds a runfiles object for the current target.
+
+    Args:
+        ctx: analysis context.
+        direct_files: list of Files to include directly.
+        indirect_targets: list of Targets to gather transitive runfiles from.
+    Returns:
+        A runfiles object containing direct_files and runfiles from
+        indirect_targets. The files from indirect_targets won't be included
+        unless they are also included in runfiles.
+    """
+    return ctx.runfiles(
+        files = direct_files,
+        transitive_files = depset(
+            transitive = [target[DefaultInfo].default_runfiles.files for target in indirect_targets],
+        ),
+    )
