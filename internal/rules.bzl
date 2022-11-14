@@ -77,51 +77,15 @@ go_binary = rule(
             allow_files = True,
             doc = "Data files available to this binary at run-time",
         ),
-        "_builder": attr.label(
-            default = "//internal/builder",
-            executable = True,
-            cfg = "exec",
-        ),
-        "_stdimportcfg": attr.label(
-            default = "//internal/builder:stdimportcfg",
-            allow_single_file = True,
-        ),
+        # EXERCISE: depend on //internal/builder and
+        # //internal/builder:stdimportcfg.
     },
     doc = "Builds an executable program from Go source code",
     executable = True,
 )
 
-def _go_tool_binary_impl(ctx):
-    executable_path = "{name}%/{name}".format(name = ctx.label.name)
-    executable = ctx.actions.declare_file(executable_path)
-    go_build_tool(
-        ctx,
-        srcs = ctx.files.srcs,
-        out = executable,
-    )
-    return [DefaultInfo(
-        files = depset([executable]),
-        executable = executable,
-    )]
-
-go_tool_binary = rule(
-    implementation = _go_tool_binary_impl,
-    attrs = {
-        "srcs": attr.label_list(
-            allow_files = [".go"],
-            doc = "Source files to compile for the main package of this binary",
-        ),
-    },
-    doc = """Builds an executable program for the Go toolchain.
-
-go_tool_binary is a simple version of go_binary. It is separate from go_binary
-because go_binary relies on a program produced by this rule.
-
-This rule does not support dependencies or build constraints. All source files
-will be compiled, and they may only depend on the standard library.
-""",
-    executable = True,
-)
+# EXERCISE: declare a go_tool_binary rule that builds an executable
+# without dependencies.
 
 def _go_library_impl(ctx):
     # Declare an output file for the library package and compile it from srcs.
@@ -176,15 +140,8 @@ go_library = rule(
             mandatory = True,
             doc = "Name by which the library may be imported",
         ),
-        "_builder": attr.label(
-            default = "//internal/builder",
-            executable = True,
-            cfg = "exec",
-        ),
-        "_stdimportcfg": attr.label(
-            default = "//internal/builder:stdimportcfg",
-            allow_single_file = True,
-        ),
+        # EXERCISE: depend on //internal/builder and
+        # //internal/builder:stdimportcfg.
     },
     doc = "Compiles a Go archive from Go sources and dependencies",
 )
@@ -232,15 +189,8 @@ go_test = rule(
             default = "",
             doc = "Name by which test archives may be imported (optional)",
         ),
-        "_builder": attr.label(
-            default = "//internal/builder",
-            executable = True,
-            cfg = "exec",
-        ),
-        "_stdimportcfg": attr.label(
-            default = "//internal/builder:stdimportcfg",
-            allow_single_file = True,
-        ),
+        # EXERCISE: depend on //internal/builder and
+        # //internal/builder:stdimportcfg.
     },
     doc = """Compiles and links a Go test executable. Functions with names
 starting with "Test" in files with names ending in "_test.go" will be called
@@ -248,23 +198,8 @@ using the go "testing" framework.""",
     test = True,
 )
 
-def _go_stdimportcfg_impl(ctx):
-    f = ctx.actions.declare_file(ctx.label.name + ".txt")
-    go_write_stdimportcfg(ctx, f)
-    return [DefaultInfo(files = depset([f]))]
-
-go_stdimportcfg = rule(
-    implementation = _go_stdimportcfg_impl,
-    attrs = {
-        "_builder": attr.label(
-            default = "//internal/builder",
-            executable = True,
-            cfg = "exec",
-        ),
-    },
-    doc = """Generates an importcfg file for the Go standard library.
-importcfg files map Go package paths to file paths.""",
-)
+# EXERCISE: declare a go_stdimportcfg rule that depends on //internal/builder
+# and creates an importcfg file using go_write_stdimportcfg.
 
 def _collect_runfiles(ctx, direct_files, indirect_targets):
     """Builds a runfiles object for the current target.
