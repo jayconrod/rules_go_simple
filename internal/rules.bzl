@@ -10,7 +10,7 @@ dependencies of a library) and create a plan of how to build it (output files,
 actions).
 """
 
-load(":actions.bzl", "go_compile", "go_link")
+load(":actions.bzl", "go_build_stdlib", "go_compile", "go_link")
 
 def _go_binary_impl(ctx):
     # Declare an output file for the main package and compile it from srcs. All
@@ -21,6 +21,7 @@ def _go_binary_impl(ctx):
     go_compile(
         ctx,
         srcs = ctx.files.srcs,
+        stdlib = ctx.files._stdlib,
         out = main_archive,
     )
 
@@ -31,6 +32,7 @@ def _go_binary_impl(ctx):
     go_link(
         ctx,
         main = main_archive,
+        stdlib = ctx.files._stdlib,
         out = executable,
     )
 
@@ -52,7 +54,48 @@ go_binary = rule(
             allow_files = [".go"],
             doc = "Source files to compile for the main package of this binary",
         ),
+        "_stdlib": attr.label(
+            default = "//:stdlib",
+        ),
     },
     doc = "Builds an executable program from Go source code",
     executable = True,
+)
+
+def _go_stdlib_impl(ctx):
+    # Declare two outputs: an importcfg file, and a packages directory.
+    # Then build them both with go_build_stdlib. See the explanation there.
+    prefix = ctx.label.name + "%/"
+    importcfg = ctx.actions.declare_file(prefix + "importcfg")
+    packages = ctx.actions.declare_directory(prefix + "packages")
+    go_build_stdlib(
+        ctx,
+        out_importcfg = importcfg,
+        out_packages = packages,
+    )
+    return [DefaultInfo(files = depset([importcfg, packages]))]
+
+# go_stdlib is an internal rule that builds the Go standard library using
+# the go tool installed on the host system.
+#
+# This rule was not part of the original tutorial series. Instead, we depended
+# on precompiled packages that shipped with the Go distribution. The
+# precompiled standard library was removed in Go 1.20 in order to reduce
+# download sizes. Unfortunately, that meant this tutorial needed a rule that
+# compiles the standard library, making it much more complicated.
+#
+# go_stdlib produces two outputs, returned in order:
+#
+#     1. An importcfg file mapping each package's import path to a relative
+#        file path within Bazel's execroot. This is read by the compiler and
+#        linker to locate files for imported packages.
+#     2. A packages directory containing compiled packages. These packages
+#        are read by the compiler (for export data) and the linker
+#        (for linking).
+#
+# There is a single go_stdlib target, //:go_stdlib. All other Go rules
+# have a hidden dependency on that target.
+go_stdlib = rule(
+    implementation = _go_stdlib_impl,
+    doc = "Builds the Go standard library",
 )
