@@ -13,10 +13,15 @@ actions).
 load(
     ":actions.bzl",
     "declare_archive",
+    "go_build_stdlib",
     "go_compile",
     "go_link",
 )
-load(":providers.bzl", "GoLibraryInfo")
+load(
+    ":providers.bzl",
+    "GoLibraryInfo",
+    "GoStdLibInfo",
+)
 
 def _go_binary_impl(ctx):
     # Declare an output file for the main package and compile it from srcs. All
@@ -27,6 +32,7 @@ def _go_binary_impl(ctx):
         ctx,
         importpath = "main",
         srcs = ctx.files.srcs,
+        stdlib = ctx.attr._stdlib[GoStdLibInfo],
         deps = [dep[GoLibraryInfo] for dep in ctx.attr.deps],
         out = main_archive,
     )
@@ -39,6 +45,7 @@ def _go_binary_impl(ctx):
     go_link(
         ctx,
         main = main_archive,
+        stdlib = ctx.attr._stdlib[GoStdLibInfo],
         deps = [dep[GoLibraryInfo] for dep in ctx.attr.deps],
         out = executable,
     )
@@ -65,6 +72,11 @@ go_binary = rule(
             providers = [GoLibraryInfo],
             doc = "Direct dependencies of the binary",
         ),
+        "_stdlib": attr.label(
+            default = "//:stdlib",
+            providers = [GoStdLibInfo],
+            doc = "Hidden dependency on the Go standard library",
+        ),
     },
     doc = "Builds an executable program from Go source code",
     executable = True,
@@ -77,6 +89,7 @@ def _go_library_impl(ctx):
         ctx,
         importpath = ctx.attr.importpath,
         srcs = ctx.files.srcs,
+        stdlib = ctx.attr._stdlib[GoStdLibInfo],
         deps = [dep[GoLibraryInfo] for dep in ctx.attr.deps],
         out = archive,
     )
@@ -111,6 +124,59 @@ go_library = rule(
             mandatory = True,
             doc = "Name by which the library may be imported",
         ),
+        "_stdlib": attr.label(
+            default = "//:stdlib",
+            providers = [GoStdLibInfo],
+            doc = "Hidden dependency on the Go standard library",
+        ),
     },
     doc = "Compiles a Go archive from Go sources and dependencies",
+)
+
+def _go_stdlib_impl(ctx):
+    # Declare two outputs: an importcfg file, and a packages directory.
+    # Then build them both with go_build_stdlib. See the explanation there.
+    prefix = ctx.label.name + "%/"
+    importcfg = ctx.actions.declare_file(prefix + "importcfg")
+    packages = ctx.actions.declare_directory(prefix + "packages")
+    go_build_stdlib(
+        ctx,
+        out_importcfg = importcfg,
+        out_packages = packages,
+    )
+    return [
+        DefaultInfo(files = depset([importcfg, packages])),
+        GoStdLibInfo(
+            importcfg = importcfg,
+            packages = packages,
+            files = depset([importcfg, packages]),
+        ),
+    ]
+
+# go_stdlib is an internal rule that builds the Go standard library using
+# the go tool installed on the host system.
+#
+# This rule was not part of the original tutorial series. Instead, we depended
+# on precompiled packages that shipped with the Go distribution. The
+# precompiled standard library was removed in Go 1.20 in order to reduce
+# download sizes. Unfortunately, that meant this tutorial needed a rule that
+# compiles the standard library, making it much more complicated.
+#
+# go_stdlib produces two outputs:
+#
+#     1. An importcfg file mapping each package's import path to a relative
+#        file path within Bazel's execroot. This is read by the compiler and
+#        linker to locate files for imported packages.
+#     2. A packages directory containing compiled packages. These packages
+#        are read by the compiler (for export data) and the linker
+#        (for linking).
+#
+# go_stdlib returns a GoStdLibInfo provider that points to these outputs.
+#
+# There is a single go_stdlib target, //:stdlib. All other Go rules
+# have a hidden dependency on that target.
+go_stdlib = rule(
+    implementation = _go_stdlib_impl,
+    doc = "Builds the Go standard library",
+    provides = [GoStdLibInfo],
 )
