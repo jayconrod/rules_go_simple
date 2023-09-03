@@ -7,60 +7,12 @@ package main
 
 import (
 	"bytes"
-	"encoding/json"
-	"flag"
 	"fmt"
 	"io/ioutil"
 	"os"
-	"os/exec"
 	"sort"
 	"strings"
 )
-
-// stdImportcfg produces an importcfg file for all the packages in the
-// standard library.
-func stdImportcfg(args []string) (err error) {
-	// Process command line arguments.
-	var outPath string
-	fs := flag.NewFlagSet("stdimportcfg", flag.ExitOnError)
-	fs.StringVar(&outPath, "o", "", "path to standard library importcfg")
-	fs.Parse(args)
-
-	// Use "go list" to list the packages and locate the archives.
-	cache, err := ioutil.TempDir("", "gocache")
-	if err != nil {
-		return err
-	}
-	defer os.RemoveAll(cache)
-	os.Setenv("GOCACHE", cache)
-	cmd := exec.Command("go", "list", "-json", "std")
-	cmd.Stderr = os.Stderr
-	data, err := cmd.Output()
-	if err != nil {
-		return fmt.Errorf("executing go list: %v", err)
-	}
-
-	// Construct the importcfg file from "go list" output.
-	archiveMap := make(map[string]string)
-	type pkg struct {
-		Standard           bool
-		ImportPath, Target string
-	}
-	buf := bytes.NewBuffer(data)
-	dec := json.NewDecoder(buf)
-	for dec.More() {
-		var p pkg
-		if err := dec.Decode(&p); err != nil {
-			return fmt.Errorf("decoding go list output: %v", err)
-		}
-		if !p.Standard || p.Target == "" {
-			continue
-		}
-		archiveMap[p.ImportPath] = p.Target
-	}
-
-	return writeImportcfg(archiveMap, outPath)
-}
 
 // readImportcfg parses an importcfg file. It returns a map from package paths
 // to archive file paths.

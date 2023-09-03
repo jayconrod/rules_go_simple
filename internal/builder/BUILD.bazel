@@ -1,8 +1,4 @@
-load(
-    "//internal:rules.bzl",
-    "go_stdimportcfg",
-    "go_tool_binary",
-)
+load("//internal:rules.bzl", "go_tool_binary")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -21,6 +17,3 @@ go_tool_binary(
         "test.go",
     ],
 )
-
-# stdimportcfg generates an importcfg file for the standard library.
-go_stdimportcfg(name = "stdimportcfg")

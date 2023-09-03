@@ -52,5 +52,6 @@ func runLinker(mainPath, importcfgPath string, outPath string) error {
 	cmd := exec.Command("go", args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
+	cmd.Env = []string{"GOPATH=/dev/null"} // suppress warning
 	return cmd.Run()
 }
