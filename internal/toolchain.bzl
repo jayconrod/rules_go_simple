@@ -16,31 +16,27 @@ load(
 )
 load(
     ":actions.bzl",
+    "find_tool",
     "go_build_test",
     "go_compile",
     "go_link",
 )
+load(
+    ":providers.bzl",
+    "GoStdLibInfo",
+)
 
 def _go_toolchain_impl(ctx):
     # Find important files and paths.
-    go_cmd = None
-    for f in ctx.files.tools:
-        if f.path.endswith("/bin/go") or f.path.endswith("/bin/go.exe"):
-            go_cmd = f
-            break
-    if not go_cmd:
-        fail("could not locate go command")
-    env = {"GOROOT": paths.dirname(paths.dirname(go_cmd.path))}
-
-    # Generate the package list from the standard library.
-    stdimportcfg = ctx.actions.declare_file(ctx.label.name + ".importcfg")
-    ctx.actions.run(
-        outputs = [stdimportcfg],
-        inputs = ctx.files.tools + ctx.files.std_pkgs,
-        arguments = ["stdimportcfg", "-o", stdimportcfg.path],
-        env = env,
-        executable = ctx.executable.builder,
-        mnemonic = "GoStdImportcfg",
+    go_exe = find_tool("go", ctx.files.tools)
+    env = {
+        "GOHOSTARCH": ctx.attr.gohostarch,
+        "GOHOSTOS": ctx.attr.gohostos,
+        "GOROOT": paths.dirname(paths.dirname(go_exe.path)),
+    }
+    files = depset(
+        direct = ctx.files.tools,
+        transitive = [ctx.attr.stdlib[GoStdLibInfo].files],
     )
 
     # Return a TooclhainInfo provider. This is the object that rules get
@@ -56,12 +52,12 @@ def _go_toolchain_impl(ctx):
         # Think of these like private fields in a class. Actions may use these
         # (they are methods of the class) but rules may not (they are clients).
         internal = struct(
-            go_cmd = go_cmd,
+            go_exe = go_exe,
             env = env,
-            stdimportcfg = stdimportcfg,
             builder = ctx.executable.builder,
+            stdlib = ctx.attr.stdlib[GoStdLibInfo],
             tools = ctx.files.tools,
-            std_pkgs = ctx.files.std_pkgs,
+            files = files,
         ),
     )]
 
@@ -71,16 +67,28 @@ go_toolchain = rule(
         "builder": attr.label(
             mandatory = True,
             executable = True,
-            cfg = "host",
+            cfg = "exec",
             doc = "Executable that performs most actions",
+        ),
+        "gohostarch": attr.string(
+            mandatory = True,
+            doc = """Name of the architecture that can run Go's
+                precompiled executables""",
+        ),
+        "gohostos": attr.string(
+            mandatory = True,
+            doc = """Name of the operating system that can run Go's
+                precompiled executables""",
+        ),
+        "stdlib": attr.label(
+            mandatory = True,
+            cfg = "exec",
+            providers = [GoStdLibInfo],
+            doc = "The compiled standard library",
         ),
         "tools": attr.label_list(
             mandatory = True,
             doc = "Compiler, linker, and other executables from the Go distribution",
-        ),
-        "std_pkgs": attr.label_list(
-            mandatory = True,
-            doc = "Standard library packages from the Go distribution",
         ),
     },
     doc = "Gathers functions and file lists needed for a Go toolchain",

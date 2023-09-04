@@ -7,49 +7,12 @@ package main
 
 import (
 	"bytes"
-	"flag"
 	"fmt"
 	"io/ioutil"
 	"os"
-	"path/filepath"
-	"runtime"
 	"sort"
 	"strings"
 )
-
-// stdImportcfg produces an importcfg file for all the packages in the
-// standard library.
-func stdImportcfg(args []string) error {
-	// Process command line arguments.
-	var outPath string
-	fs := flag.NewFlagSet("stdimportcfg", flag.ExitOnError)
-	fs.StringVar(&outPath, "o", "", "path to standard library importcfg")
-	fs.Parse(args)
-
-	// Walk the directory of compiled archives. Each archive's location
-	// corresponds with its package path, so we don't need to run 'go list'.
-	archiveMap := make(map[string]string)
-	goroot, ok := os.LookupEnv("GOROOT")
-	if !ok {
-		return fmt.Errorf("GOROOT not set")
-	}
-	pkgDir := filepath.Join(goroot, "pkg", runtime.GOOS+"_"+runtime.GOARCH)
-	err := filepath.Walk(pkgDir, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		if !info.IsDir() && strings.HasSuffix(path, ".a") {
-			pkgPath := filepath.ToSlash(path[len(pkgDir)+1 : len(path)-len(".a")])
-			archiveMap[pkgPath] = path
-		}
-		return nil
-	})
-	if err != nil {
-		return err
-	}
-
-	return writeImportcfg(archiveMap, outPath)
-}
 
 // readImportcfg parses an importcfg file. It returns a map from package paths
 // to archive file paths.

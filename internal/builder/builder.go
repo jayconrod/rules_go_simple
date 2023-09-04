@@ -24,8 +24,6 @@ func main() {
 
 	var action func(args []string) error
 	switch verb {
-	case "stdimportcfg":
-		action = stdImportcfg
 	case "compile":
 		action = compile
 	case "link":

@@ -11,6 +11,7 @@ import (
 	"go/build"
 	"os"
 	"os/exec"
+	"path/filepath"
 )
 
 // compile produces a Go archive file (.a) from a list of .go sources.  This
@@ -87,18 +88,16 @@ func compile(args []string) error {
 }
 
 func runCompiler(packagePath, importcfgPath string, srcPaths []string, outPath string) error {
-	args := []string{"tool", "compile"}
+	platform := fmt.Sprintf("%s_%s", os.Getenv("GOHOSTOS"), os.Getenv("GOHOSTARCH"))
+	compiler := filepath.Join(os.Getenv("GOROOT"), "pkg", "tool", platform, "compile")
+	var args []string
 	if packagePath != "" {
 		args = append(args, "-p", packagePath)
 	}
 	args = append(args, "-importcfg", importcfgPath)
 	args = append(args, "-o", outPath, "--")
 	args = append(args, srcPaths...)
-	goTool, err := findGoTool()
-	if err != nil {
-		return err
-	}
-	cmd := exec.Command(goTool, args...)
+	cmd := exec.Command(compiler, args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd.Run()

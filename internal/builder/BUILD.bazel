@@ -6,7 +6,6 @@ filegroup(
     srcs = [
         "builder.go",
         "compile.go",
-        "env.go",
         "flags.go",
         "importcfg.go",
         "link.go",

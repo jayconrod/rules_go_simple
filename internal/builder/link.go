@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 )
 
 // link produces an executable file from a main archive file and a list of
@@ -47,13 +48,11 @@ func link(args []string) error {
 }
 
 func runLinker(mainPath, importcfgPath string, outPath string) error {
-	args := []string{"tool", "link", "-importcfg", importcfgPath, "-o", outPath}
+	platform := fmt.Sprintf("%s_%s", os.Getenv("GOHOSTOS"), os.Getenv("GOHOSTARCH"))
+	linker := filepath.Join(os.Getenv("GOROOT"), "pkg", "tool", platform, "link")
+	args := []string{"-importcfg", importcfgPath, "-o", outPath}
 	args = append(args, "--", mainPath)
-	goTool, err := findGoTool()
-	if err != nil {
-		return err
-	}
-	cmd := exec.Command(goTool, args...)
+	cmd := exec.Command(linker, args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd.Run()

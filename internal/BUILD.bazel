@@ -1,1 +1,11 @@
-# Empty build file, just here to define a package.
+sh_binary(
+    name = "build_stdlib",
+    srcs = ["build_stdlib.sh"],
+    visibility = ["//visibility:public"],
+)
+
+sh_binary(
+    name = "build_tool",
+    srcs = ["build_tool.sh"],
+    visibility = ["//visibility:public"],
+)
