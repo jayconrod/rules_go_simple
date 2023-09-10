@@ -12,7 +12,7 @@ by multiple rules.
 
 load("@bazel_skylib//lib:shell.bzl", "shell")
 
-def go_compile(ctx, srcs, stdlib, out):
+def go_compile(ctx, *, srcs, stdlib, out):
     """Compiles a single Go package from sources.
 
     Args:
@@ -34,11 +34,12 @@ def go_compile(ctx, srcs, stdlib, out):
         outputs = [out],
         inputs = srcs + stdlib,
         command = cmd,
+        env = {"GOPATH": "/dev/null"},  # suppress warning
         mnemonic = "GoCompile",
         use_default_shell_env = True,
     )
 
-def go_link(ctx, out, stdlib, main):
+def go_link(ctx, *, out, stdlib, main):
     """Links a Go executable.
 
     Args:
@@ -58,6 +59,7 @@ def go_link(ctx, out, stdlib, main):
         outputs = [out],
         inputs = [main] + stdlib,
         command = cmd,
+        env = {"GOPATH": "/dev/null"},  # suppress warning
         mnemonic = "GoLink",
         use_default_shell_env = True,
     )
@@ -112,6 +114,6 @@ export GOCACHE="$(realpath {out_packages})"
 # in other Bazel actions if sandboxing or remote execution are used, so we
 # trim everything before $(pwd) using sed.
 go list -export -f '{{{{if .Export}}}}packagefile {{{{.ImportPath}}}}={{{{.Export}}}}{{{{end}}}}' std | \
-  sed -E -e "s,=$(pwd)/,=," \
+  sed -E -e "s,=$(pwd)/,=," \\
   >{out_importcfg}
 """
