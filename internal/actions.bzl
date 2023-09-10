@@ -12,31 +12,12 @@ by multiple rules.
 
 load("@bazel_skylib//lib:shell.bzl", "shell")
 
-def declare_archive(ctx, importpath):
-    """Declares a new .a file the compiler should produce.
-
-    .a files are consumed by the compiler (for dependency type information)
-    and the linker. Both tools locate archives using lists of search paths.
-    Archives must be named according to their importpath. For example,
-    library "example.com/foo" must be named "<searchdir>/example.com/foo.a".
-
-    Args:
-        ctx: analysis context.
-        importpath: the name by which the library may be imported.
-    Returns:
-        A File that should be written by the compiler.
-    """
-    return ctx.actions.declare_file("{name}%/{importpath}.a".format(
-        name = ctx.label.name,
-        importpath = importpath,
-    ))
-
-def go_compile(ctx, importpath, srcs, stdlib, out, deps = []):
+def go_compile(ctx, *, importpath, srcs, stdlib, out, deps):
     """Compiles a single Go package from sources.
 
     Args:
         ctx: analysis context.
-        importpath: name by which the package will be imported.
+        importpath: the path other libraries may use to import this package.
         srcs: list of source Files to be compiled.
         stdlib: a GoStdLibInfo provider for the standard library.
         out: output .a file. Should have the importpath as a suffix,
@@ -81,7 +62,7 @@ rm "${{importcfg}}"
         use_default_shell_env = True,
     )
 
-def go_link(ctx, out, stdlib, main, deps = []):
+def go_link(ctx, *, out, stdlib, main, deps):
     """Links a Go executable.
 
     Args:
@@ -180,6 +161,6 @@ export GOCACHE="$(realpath {out_packages})"
 # in other Bazel actions if sandboxing or remote execution are used, so we
 # trim everything before $(pwd) using sed.
 go list -export -f '{{{{if .Export}}}}packagefile {{{{.ImportPath}}}}={{{{.Export}}}}{{{{end}}}}' std | \
-  sed -E -e "s,=$(pwd)/,=," \
+  sed -E -e "s,=$(pwd)/,=," \\
   >{out_importcfg}
 """
