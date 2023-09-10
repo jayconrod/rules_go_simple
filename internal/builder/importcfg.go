@@ -8,7 +8,6 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"sort"
 	"strings"
@@ -19,7 +18,7 @@ import (
 func readImportcfg(importcfgPath string) (map[string]string, error) {
 	archiveMap := make(map[string]string)
 
-	data, err := ioutil.ReadFile(importcfgPath)
+	data, err := os.ReadFile(importcfgPath)
 	if err != nil {
 		return nil, err
 	}
@@ -53,7 +52,7 @@ func readImportcfg(importcfgPath string) (map[string]string, error) {
 // writeTempImportcfg writes a temporary importcfg file. The caller is
 // responsible for deleting it.
 func writeTempImportcfg(archiveMap map[string]string) (string, error) {
-	tmpFile, err := ioutil.TempFile("", "importcfg-*")
+	tmpFile, err := os.CreateTemp("", "importcfg-*")
 	if err != nil {
 		return "", err
 	}
@@ -81,5 +80,5 @@ func writeImportcfg(archiveMap map[string]string, outPath string) error {
 		fmt.Fprintf(buf, "packagefile %s=%s\n", pkgPath, archiveMap[pkgPath])
 	}
 
-	return ioutil.WriteFile(outPath, buf.Bytes(), 0666)
+	return os.WriteFile(outPath, buf.Bytes(), 0666)
 }

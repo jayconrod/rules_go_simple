@@ -3,6 +3,13 @@
 # This file is part of rules_go_simple. Use of this source code is governed by
 # the 3-clause BSD license that can be found in the LICENSE.txt file.
 
+"""Repository rules for obtaining the Go distribution.
+
+Repository rules should be kept in a separate file from other rules.
+This file may be loaded very early in WORKSPACE, so repository rules
+should have very few dependencies if any.
+"""
+
 def _go_download_impl(ctx):
     # Download the Go distribution.
     # Execute 'tar x' explicitly instead of using ctx.download_and_extract.

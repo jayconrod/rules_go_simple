@@ -10,7 +10,7 @@ call functions to create actions. This allows action code to be shared
 by multiple rules.
 """
 
-def go_compile(ctx, importpath, srcs, out, deps = []):
+def go_compile(ctx, *, importpath, srcs, out, deps):
     """Compiles a single Go package from sources.
 
     Args:
@@ -45,7 +45,7 @@ def go_compile(ctx, importpath, srcs, out, deps = []):
         mnemonic = "GoCompile",
     )
 
-def go_link(ctx, out, main, deps = []):
+def go_link(ctx, *, out, main, deps):
     """Links a Go executable.
 
     Args:
@@ -81,7 +81,7 @@ def go_link(ctx, out, main, deps = []):
         mnemonic = "GoLink",
     )
 
-def go_build_test(ctx, importpath, srcs, deps, out, rundir):
+def go_build_test(ctx, *, importpath, srcs, deps, out, rundir):
     """Compiles and links a Go test executable.
 
     Args:
@@ -122,7 +122,7 @@ def go_build_test(ctx, importpath, srcs, deps, out, rundir):
         mnemonic = "GoTest",
     )
 
-def go_build_stdlib(ctx, srcs, tools, build_stdlib, out_importcfg, out_packages):
+def go_build_stdlib(ctx, *, srcs, tools, build_stdlib, out_importcfg, out_packages):
     """Builds the standard library.
 
     Args:
@@ -160,7 +160,7 @@ def go_build_stdlib(ctx, srcs, tools, build_stdlib, out_importcfg, out_packages)
         mnemonic = "GoStdLib",
     )
 
-def go_build_tool(ctx, srcs, stdlib, tools, build_tool, out):
+def go_build_tool(ctx, *, srcs, stdlib, tools, build_tool, out):
     """Compiles and links a Go executable to be used in the toolchain.
 
     Only allows a main package that depends on the standard library.

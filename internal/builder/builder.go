@@ -9,18 +9,23 @@
 package main
 
 import (
-	"log"
+	"fmt"
 	"os"
 )
 
 func main() {
-	log.SetFlags(0)
-	log.SetPrefix("builder: ")
-	if len(os.Args) <= 2 {
-		log.Fatalf("usage: %s stdimportcfg|compile|link|test options...", os.Args[0])
+	if err := run(os.Args[1:]); err != nil {
+		fmt.Fprintf(os.Stderr, "builder error: %v\n", err)
+		os.Exit(1)
 	}
-	verb := os.Args[1]
-	args := os.Args[2:]
+}
+
+func run(args []string) error {
+	if len(args) <= 2 {
+		return fmt.Errorf("usage: builder compile|link|test options...")
+	}
+	verb := args[0]
+	args = args[1:]
 
 	var action func(args []string) error
 	switch verb {
@@ -31,12 +36,7 @@ func main() {
 	case "test":
 		action = test
 	default:
-		log.Fatalf("unknown action: %s", verb)
+		return fmt.Errorf("unknown action: %s", verb)
 	}
-	log.SetPrefix(verb + ": ")
-
-	err := action(args)
-	if err != nil {
-		log.Fatal(err)
-	}
+	return action(args)
 }
