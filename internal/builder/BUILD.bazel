@@ -1,7 +1,5 @@
 load("//internal:rules.bzl", "go_tool_binary")
 
-package(default_visibility = ["//visibility:public"])
-
 # builder is a tool used to perform various tasks related to building Go code,
 # such as compiling packages, linking executables, and generating
 # test sources.
@@ -16,4 +14,5 @@ go_tool_binary(
         "sourceinfo.go",
         "test.go",
     ],
+    visibility = ["//visibility:public"],
 )

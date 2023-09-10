@@ -12,26 +12,7 @@ by multiple rules.
 
 load("@bazel_skylib//lib:shell.bzl", "shell")
 
-def declare_archive(ctx, importpath):
-    """Declares a new .a file the compiler should produce.
-
-    .a files are consumed by the compiler (for dependency type information)
-    and the linker. Both tools locate archives using lists of search paths.
-    Archives must be named according to their importpath. For example,
-    library "example.com/foo" must be named "<searchdir>/example.com/foo.a".
-
-    Args:
-        ctx: analysis context.
-        importpath: the name by which the library may be imported.
-    Returns:
-        A File that should be written by the compiler.
-    """
-    return ctx.actions.declare_file("{name}%/{importpath}.a".format(
-        name = ctx.label.name,
-        importpath = importpath,
-    ))
-
-def go_compile(ctx, importpath, srcs, stdlib, out, deps = []):
+def go_compile(ctx, *, importpath, srcs, stdlib, out, deps):
     """Compiles a single Go package from sources.
 
     Args:
@@ -68,7 +49,7 @@ def go_compile(ctx, importpath, srcs, stdlib, out, deps = []):
         use_default_shell_env = True,
     )
 
-def go_link(ctx, out, stdlib, main, deps = []):
+def go_link(ctx, *, out, stdlib, main, deps):
     """Links a Go executable.
 
     Args:
@@ -103,7 +84,7 @@ def go_link(ctx, out, stdlib, main, deps = []):
         use_default_shell_env = True,
     )
 
-def go_build_test(ctx, importpath, srcs, stdlib, deps, out, rundir):
+def go_build_test(ctx, *, importpath, srcs, stdlib, deps, out, rundir):
     """Compiles and links a Go test executable.
 
     Args:
@@ -144,7 +125,7 @@ def go_build_test(ctx, importpath, srcs, stdlib, deps, out, rundir):
         use_default_shell_env = True,
     )
 
-def go_build_tool(ctx, srcs, stdlib, out):
+def go_build_tool(ctx, *, srcs, stdlib, out):
     """Compiles and links a Go executable to be used in the toolchain.
 
     Only allows a main package that depends on the standard library.
@@ -182,8 +163,12 @@ def _format_arc(lib):
     """Formats a GoLibraryInfo.info object as an -arc argument"""
     return "{}={}".format(lib.importpath, lib.archive.path)
 
-def go_build_stdlib(ctx, out_importcfg, out_packages):
+def go_build_stdlib(ctx, *, out_importcfg, out_packages):
     """Builds the standard library.
+
+    go_build_stdlib compiles the standard library from the sources installed
+    on the host system. The packages are installed into a GOCACHE directory
+    as an output of a Bazel action.
 
     Args:
         ctx: analysis context.
@@ -232,6 +217,6 @@ export GOCACHE="$(realpath {out_packages})"
 # in other Bazel actions if sandboxing or remote execution are used, so we
 # trim everything before $(pwd) using sed.
 go list -export -f '{{{{if .Export}}}}packagefile {{{{.ImportPath}}}}={{{{.Export}}}}{{{{end}}}}' std | \
-  sed -E -e "s,=$(pwd)/,=," \
+  sed -E -e "s,=$(pwd)/,=," \\
   >{out_importcfg}
 """

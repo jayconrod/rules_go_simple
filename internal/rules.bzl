@@ -12,7 +12,6 @@ actions).
 
 load(
     ":actions.bzl",
-    "declare_archive",
     "go_build_stdlib",
     "go_build_test",
     "go_build_tool",
@@ -29,7 +28,7 @@ def _go_binary_impl(ctx):
     # Declare an output file for the main package and compile it from srcs. All
     # our output files will start with a prefix to avoid conflicting with
     # other rules.
-    main_archive = declare_archive(ctx, "main")
+    main_archive = ctx.actions.declare_file("{name}_/main.a".format(name = ctx.label.name))
     go_compile(
         ctx,
         importpath = "main",
@@ -42,7 +41,7 @@ def _go_binary_impl(ctx):
     # Declare an output file for the executable and link it. Note that output
     # files may not have the same name as the rule, so we still need to use the
     # prefix here.
-    executable_path = "{name}%/{name}".format(name = ctx.label.name)
+    executable_path = "{name}_/{name}".format(name = ctx.label.name)
     executable = ctx.actions.declare_file(executable_path)
     go_link(
         ctx,
@@ -90,7 +89,7 @@ go_binary = rule(
             cfg = "exec",
         ),
         "_stdlib": attr.label(
-            default = "//:stdlib",
+            default = "//internal:stdlib",
             providers = [GoStdLibInfo],
             doc = "Hidden dependency on the Go standard library",
         ),
@@ -100,7 +99,8 @@ go_binary = rule(
 )
 
 def _go_tool_binary_impl(ctx):
-    executable_path = "{name}%/{name}".format(name = ctx.label.name)
+    # Declare the output executable file.
+    executable_path = "{name}_/{name}".format(name = ctx.label.name)
     executable = ctx.actions.declare_file(executable_path)
     go_build_tool(
         ctx,
@@ -118,10 +118,11 @@ go_tool_binary = rule(
     attrs = {
         "srcs": attr.label_list(
             allow_files = [".go"],
+            mandatory = True,
             doc = "Source files to compile for the main package of this binary",
         ),
         "_stdlib": attr.label(
-            default = "//:stdlib",
+            default = "//internal:stdlib",
             providers = [GoStdLibInfo],
             doc = "Hidden dependency on the Go standard library",
         ),
@@ -129,7 +130,8 @@ go_tool_binary = rule(
     doc = """Builds an executable program for the Go toolchain.
 
 go_tool_binary is a simple version of go_binary. It is separate from go_binary
-because go_binary relies on a program produced by this rule.
+because go_binary depends on the Go toolchain, and the toolchain uses a binary
+built with this rule to do most of its work.
 
 This rule does not support dependencies or build constraints. All source files
 will be compiled, and they may only depend on the standard library.
@@ -139,7 +141,7 @@ will be compiled, and they may only depend on the standard library.
 
 def _go_library_impl(ctx):
     # Declare an output file for the library package and compile it from srcs.
-    archive = declare_archive(ctx, ctx.attr.importpath)
+    archive = ctx.actions.declare_file("{name}_/pkg.a".format(name = ctx.label.name))
     go_compile(
         ctx,
         importpath = ctx.attr.importpath,
@@ -169,6 +171,10 @@ def _go_library_impl(ctx):
                 direct = [dep[GoLibraryInfo].info for dep in ctx.attr.deps],
                 transitive = [dep[GoLibraryInfo].deps for dep in ctx.attr.deps],
             ),
+            files = depset(
+                direct = [archive],
+                transitive = [dep[GoLibraryInfo].files for dep in ctx.attr.deps],
+            ),
         ),
     ]
 
@@ -197,7 +203,7 @@ go_library = rule(
             cfg = "exec",
         ),
         "_stdlib": attr.label(
-            default = "//:stdlib",
+            default = "//internal:stdlib",
             providers = [GoStdLibInfo],
             doc = "Hidden dependency on the Go standard library",
         ),
@@ -206,7 +212,7 @@ go_library = rule(
 )
 
 def _go_test_impl(ctx):
-    executable_path = "{name}%/{name}".format(name = ctx.label.name)
+    executable_path = "{name}_/{name}".format(name = ctx.label.name)
     executable = ctx.actions.declare_file(executable_path)
     go_build_test(
         ctx,
@@ -255,7 +261,7 @@ go_test = rule(
             cfg = "exec",
         ),
         "_stdlib": attr.label(
-            default = "//:stdlib",
+            default = "//internal:stdlib",
             providers = [GoStdLibInfo],
             doc = "Hidden dependency on the Go standard library",
         ),
@@ -286,8 +292,8 @@ def _go_stdlib_impl(ctx):
         ),
     ]
 
-# go_stdlib is an internal rule that builds the Go standard library using
-# the go tool installed on the host system.
+# go_stdlib is an internal rule that compiles the Go standard library
+# using source files and tools from a downloaded Go distribution.
 #
 # This rule was not part of the original tutorial series. Instead, we depended
 # on precompiled packages that shipped with the Go distribution. The
@@ -306,7 +312,7 @@ def _go_stdlib_impl(ctx):
 #
 # go_stdlib returns a GoStdLibInfo provider that points to these outputs.
 #
-# There is a single go_stdlib target, //:stdlib. All other Go rules
+# There is a single go_stdlib target, //internal:stdlib. All other Go rules
 # have a hidden dependency on that target.
 go_stdlib = rule(
     implementation = _go_stdlib_impl,
