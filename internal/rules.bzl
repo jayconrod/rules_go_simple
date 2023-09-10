@@ -12,7 +12,6 @@ actions).
 
 load(
     ":actions.bzl",
-    "declare_archive",
     "go_build_stdlib",
     "go_compile",
     "go_link",
@@ -27,7 +26,7 @@ def _go_binary_impl(ctx):
     # Declare an output file for the main package and compile it from srcs. All
     # our output files will start with a prefix to avoid conflicting with
     # other rules.
-    main_archive = declare_archive(ctx, "main")
+    main_archive = ctx.actions.declare_file("{name}_/main.a".format(name = ctx.label.name))
     go_compile(
         ctx,
         importpath = "main",
@@ -40,7 +39,7 @@ def _go_binary_impl(ctx):
     # Declare an output file for the executable and link it. Note that output
     # files may not have the same name as the rule, so we still need to use the
     # prefix here.
-    executable_path = "{name}%/{name}".format(name = ctx.label.name)
+    executable_path = "{name}_/{name}".format(name = ctx.label.name)
     executable = ctx.actions.declare_file(executable_path)
     go_link(
         ctx,
@@ -51,8 +50,8 @@ def _go_binary_impl(ctx):
     )
 
     # Return the DefaultInfo provider. This tells Bazel what files should be
-    # built when someone asks to build a go_binary rules. It also says which
-    # one is executable (in this case, there's only one).
+    # built when someone asks to build a go_binary rule. It also says which
+    # file is executable (in this case, there's only one).
     return [DefaultInfo(
         files = depset([executable]),
         executable = executable,
@@ -73,7 +72,7 @@ go_binary = rule(
             doc = "Direct dependencies of the binary",
         ),
         "_stdlib": attr.label(
-            default = "//:stdlib",
+            default = "//internal:stdlib",
             providers = [GoStdLibInfo],
             doc = "Hidden dependency on the Go standard library",
         ),
@@ -84,7 +83,7 @@ go_binary = rule(
 
 def _go_library_impl(ctx):
     # Declare an output file for the library package and compile it from srcs.
-    archive = declare_archive(ctx, ctx.attr.importpath)
+    archive = ctx.actions.declare_file("{name}_/pkg.a".format(name = ctx.label.name))
     go_compile(
         ctx,
         importpath = ctx.attr.importpath,
@@ -106,6 +105,10 @@ def _go_library_impl(ctx):
                 direct = [dep[GoLibraryInfo].info for dep in ctx.attr.deps],
                 transitive = [dep[GoLibraryInfo].deps for dep in ctx.attr.deps],
             ),
+            files = depset(
+                direct = [archive],
+                transitive = [dep[GoLibraryInfo].files for dep in ctx.attr.deps],
+            ),
         ),
     ]
 
@@ -125,7 +128,7 @@ go_library = rule(
             doc = "Name by which the library may be imported",
         ),
         "_stdlib": attr.label(
-            default = "//:stdlib",
+            default = "//internal:stdlib",
             providers = [GoStdLibInfo],
             doc = "Hidden dependency on the Go standard library",
         ),
@@ -153,8 +156,8 @@ def _go_stdlib_impl(ctx):
         ),
     ]
 
-# go_stdlib is an internal rule that builds the Go standard library using
-# the go tool installed on the host system.
+# go_stdlib is an internal rule that compiles the Go standard library
+# using source files and tools from a downloaded Go distribution.
 #
 # This rule was not part of the original tutorial series. Instead, we depended
 # on precompiled packages that shipped with the Go distribution. The
@@ -173,7 +176,7 @@ def _go_stdlib_impl(ctx):
 #
 # go_stdlib returns a GoStdLibInfo provider that points to these outputs.
 #
-# There is a single go_stdlib target, //:stdlib. All other Go rules
+# There is a single go_stdlib target, //internal:stdlib. All other Go rules
 # have a hidden dependency on that target.
 go_stdlib = rule(
     implementation = _go_stdlib_impl,
