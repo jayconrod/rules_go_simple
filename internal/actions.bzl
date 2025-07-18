@@ -35,8 +35,7 @@ def go_compile(ctx, srcs, out, importpath = "", deps = []):
     inputs = (srcs +
               [dep.info.archive for dep in deps] +
               [toolchain.internal.stdimportcfg] +
-              toolchain.internal.tools +
-              toolchain.internal.std_pkgs)
+              toolchain.internal.tools)
     ctx.actions.run(
         outputs = [out],
         inputs = inputs,
@@ -63,8 +62,7 @@ def go_link(ctx, out, main, deps = []):
     )
     inputs = ([main, toolchain.internal.stdimportcfg] +
               [d.archive for d in transitive_deps.to_list()] +
-              toolchain.internal.tools +
-              toolchain.internal.std_pkgs)
+              toolchain.internal.tools)
 
     args = ctx.actions.args()
     args.add("link")
@@ -100,8 +98,7 @@ def go_build_test(ctx, srcs, deps, out, rundir = "", importpath = ""):
               [toolchain.internal.stdimportcfg] +
               [d.archive for d in direct_dep_infos] +
               [d.archive for d in transitive_dep_infos] +
-              toolchain.internal.tools +
-              toolchain.internal.std_pkgs)
+              toolchain.internal.tools)
 
     args = ctx.actions.args()
     args.add("test")

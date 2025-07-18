@@ -100,7 +100,7 @@ def _go_tool_binary_impl(ctx):
         out = shell.quote(executable.path),
         srcs = " ".join([shell.quote(src.path) for src in ctx.files.srcs]),
     )
-    inputs = ctx.files.srcs + ctx.files.tools + ctx.files.std_pkgs
+    inputs = ctx.files.srcs + ctx.files.tools
     ctx.actions.run_shell(
         outputs = [executable],
         inputs = inputs,
@@ -125,11 +125,6 @@ go_tool_binary = rule(
             allow_files = True,
             mandatory = True,
             doc = "Executable files that are part of a Go distribution",
-        ),
-        "std_pkgs": attr.label_list(
-            allow_files = True,
-            mandatory = True,
-            doc = "Pre-compiled standard library packages that are part of a Go distribution",
         ),
     },
     doc = """Builds an executable program for the Go toolchain.

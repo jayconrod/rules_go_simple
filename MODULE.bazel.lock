@@ -137,6 +137,40 @@
   },
   "selectedYankedVersions": {},
   "moduleExtensions": {
+    "//:go.bzl%go": {
+      "os:osx,arch:aarch64": {
+        "bzlTransitiveDigest": "lkTgqZovV1McpIVrv7pBpHJNMCGd45Te67uJpVe998s=",
+        "usagesDigest": "ibd0ZzvcwEB/mQ/bTfb2+T/d9af3N32WJIOl2LbgmJQ=",
+        "recordedFileInputs": {},
+        "recordedDirentsInputs": {},
+        "envVariables": {},
+        "generatedRepoSpecs": {
+          "go_darwin_arm64": {
+            "repoRuleId": "@@//internal:repo.bzl%go_download",
+            "attributes": {
+              "urls": [
+                "https://go.dev/dl/go1.24.5.darwin-arm64.tar.gz"
+              ],
+              "sha256": "92d30a678f306c327c544758f2d2fa5515aa60abe9dba4ca35fbf9b8bfc53212",
+              "goos": "darwin",
+              "goarch": "arm64"
+            }
+          },
+          "go_toolchains": {
+            "repoRuleId": "@@//internal:repo.bzl%go_toolchains",
+            "attributes": {
+              "repos": [
+                "go_darwin_arm64"
+              ],
+              "goos_goarchs": [
+                "darwin_arm64"
+              ]
+            }
+          }
+        },
+        "recordedRepoMappingEntries": []
+      }
+    },
     "@@rules_kotlin+//src/main/starlark/core/repositories:bzlmod_setup.bzl%rules_kotlin_extensions": {
       "general": {
         "bzlTransitiveDigest": "hUTp2w+RUVdL7ma5esCXZJAFnX7vLbVfLd7FwnQI6bU=",

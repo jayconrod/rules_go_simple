@@ -36,7 +36,7 @@ def _go_toolchain_impl(ctx):
     stdimportcfg = ctx.actions.declare_file(ctx.label.name + ".importcfg")
     ctx.actions.run(
         outputs = [stdimportcfg],
-        inputs = ctx.files.tools + ctx.files.std_pkgs,
+        inputs = ctx.files.tools,
         arguments = ["stdimportcfg", "-o", stdimportcfg.path],
         env = env,
         executable = ctx.executable.builder,
@@ -61,7 +61,6 @@ def _go_toolchain_impl(ctx):
             stdimportcfg = stdimportcfg,
             builder = ctx.executable.builder,
             tools = ctx.files.tools,
-            std_pkgs = ctx.files.std_pkgs,
         ),
     )]
 
@@ -77,10 +76,6 @@ go_toolchain = rule(
         "tools": attr.label_list(
             mandatory = True,
             doc = "Compiler, linker, and other executables from the Go distribution",
-        ),
-        "std_pkgs": attr.label_list(
-            mandatory = True,
-            doc = "Standard library packages from the Go distribution",
         ),
     },
     doc = "Gathers functions and file lists needed for a Go toolchain",
