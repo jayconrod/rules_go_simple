@@ -124,6 +124,36 @@ def go_build_test(ctx, srcs, deps, out, rundir = "", importpath = ""):
         mnemonic = "GoTest",
     )
 
+def go_compile_stdlib(ctx, srcs, tools, pkg_dir):
+    go_tool = find_go_tool(tools)
+    script_tpl = """
+set -o errexit -o nounset -o pipefail
+export GOCACHE="$PWD/{pkg_dir}_tmp"
+package_list="{pkg_dir}/packages.txt"
+mkdir -p "{pkg_dir}"
+# DO NOT SUBMIT
+pwd >&2
+ls -l external/+_repo_rules+go_darwin_arm64/src/internal/trace/traceviewer/static/trace_viewer_full.html >&2
+"{go_tool}" list -export -f '{{{{.ImportPath}}}}={{{{.Export}}}}' std >"$package_list"
+while IFS='=' read pkg_path file; do
+  cp "$pkg_path" "{pkg_dir}/$pkg_path.a"
+done <"$package_list"
+rm -rf "$GOCACHE"
+"""
+    script = script_tpl.format(go_tool = go_tool.path, pkg_dir = pkg_dir.path)
+    ctx.actions.run_shell(
+        outputs = [pkg_dir],
+        inputs = srcs + tools,
+        command = script,
+        mnemonic = "GoStdlib",
+    )
+
+def find_go_tool(tools):
+    for f in tools:
+        if f.path.endswith("/bin/go") or f.path.endswith("/bin/go.exe"):
+            return f
+    fail("could not locate go tool")
+
 def _format_arc(lib):
     """Formats a GoLibraryInfo.info object as an -arc argument"""
     return "{}={}".format(lib.importpath, lib.archive.path)

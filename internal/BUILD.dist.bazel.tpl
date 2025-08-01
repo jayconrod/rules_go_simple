@@ -2,7 +2,7 @@
 # a downloaded Go distribution.
 
 load("@rules_go_simple//:def.bzl", "go_toolchain")
-load("@rules_go_simple//internal:rules.bzl", "go_tool_binary")
+load("@rules_go_simple//internal:rules.bzl", "go_stdlib", "go_tool_binary")
 
 # tools contains executable files that are part of the toolchain.
 filegroup(
@@ -11,14 +11,10 @@ filegroup(
     visibility = ["//visibility:public"],
 )
 
-# std_pkgs contains packages in the standard library.
-filegroup(
-    name = "std_pkgs",
-    srcs = glob(
-        ["pkg/{goos}_{goarch}/**"],
-        exclude = ["pkg/{goos}_{goarch}/cmd/**"],
-    ),
-    visibility = ["//visibility:public"],
+go_stdlib(
+    name = "stdlib",
+    srcs = glob(["src/**", "pkg/include/**"], exclude = ["src/cmd/**"]),
+    tools = [":tools"],
 )
 
 # builder is an executable used by rules_go_simple to perform most actions.
@@ -26,7 +22,7 @@ filegroup(
 go_tool_binary(
     name = "builder",
     srcs = ["@rules_go_simple//internal/builder:builder_srcs"],
-    std_pkgs = [":std_pkgs"],
+    stdlib = ":stdlib",
     tools = [":tools"],
 )
 
@@ -35,7 +31,7 @@ go_tool_binary(
 go_toolchain(
     name = "toolchain_impl",
     builder = ":builder",
-    std_pkgs = [":std_pkgs"],
+    std_pkgs = [":stdlib"],
     tools = [":tools"],
 )
 
