@@ -20,28 +20,12 @@ load(
     "go_compile",
     "go_link",
 )
+load(":util.bzl", "find_go_cmd")
 
 def _go_toolchain_impl(ctx):
     # Find important files and paths.
-    go_cmd = None
-    for f in ctx.files.tools:
-        if f.path.endswith("/bin/go") or f.path.endswith("/bin/go.exe"):
-            go_cmd = f
-            break
-    if not go_cmd:
-        fail("could not locate go command")
+    go_cmd = find_go_cmd(ctx.files.tools)
     env = {"GOROOT": paths.dirname(paths.dirname(go_cmd.path))}
-
-    # Generate the package list from the standard library.
-    stdimportcfg = ctx.actions.declare_file(ctx.label.name + ".importcfg")
-    ctx.actions.run(
-        outputs = [stdimportcfg],
-        inputs = ctx.files.tools + ctx.files.std_pkgs,
-        arguments = ["stdimportcfg", "-o", stdimportcfg.path],
-        env = env,
-        executable = ctx.executable.builder,
-        mnemonic = "GoStdImportcfg",
-    )
 
     # Return a TooclhainInfo provider. This is the object that rules get
     # when they ask for the toolchain.
@@ -58,10 +42,9 @@ def _go_toolchain_impl(ctx):
         internal = struct(
             go_cmd = go_cmd,
             env = env,
-            stdimportcfg = stdimportcfg,
             builder = ctx.executable.builder,
             tools = ctx.files.tools,
-            std_pkgs = ctx.files.std_pkgs,
+            stdlib = ctx.file.stdlib,
         ),
     )]
 
@@ -78,9 +61,11 @@ go_toolchain = rule(
             mandatory = True,
             doc = "Compiler, linker, and other executables from the Go distribution",
         ),
-        "std_pkgs": attr.label_list(
+        "stdlib": attr.label(
             mandatory = True,
-            doc = "Standard library packages from the Go distribution",
+            allow_single_file = True,
+            cfg = "target",
+            doc = "Package files for the standard library compiled by go_stdlib",
         ),
     },
     doc = "Gathers functions and file lists needed for a Go toolchain",

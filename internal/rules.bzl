@@ -10,8 +10,8 @@ dependencies of a library) and create a plan of how to build it (output files,
 actions).
 """
 
-load("@bazel_skylib//lib:shell.bzl", "shell")
 load(":providers.bzl", "GoLibraryInfo")
+load(":util.bzl", "find_go_cmd")
 
 def _go_binary_impl(ctx):
     # Load the toolchain.
@@ -79,33 +79,23 @@ go_binary = rule(
 )
 
 def _go_tool_binary_impl(ctx):
-    # Locate the go command. We use it to invoke the compiler and linker.
-    go_cmd = None
-    for f in ctx.files.tools:
-        if f.path.endswith("/bin/go") or f.path.endswith("/bin/go.exe"):
-            go_cmd = f
-            break
-    if not go_cmd:
-        fail("could not locate Go command")
-
     # Declare the output executable file.
-    executable_path = "{name}_/{name}".format(name = ctx.label.name)
-    executable = ctx.actions.declare_file(executable_path)
+    executable = ctx.actions.declare_file(ctx.label.name)
 
-    # Create a shell command that compiles and links the binary.
-    cmd_tpl = ("{go} tool compile -o {out}.a {srcs} && " +
-               "{go} tool link -o {out} {out}.a")
-    cmd = cmd_tpl.format(
-        go = shell.quote(go_cmd.path),
-        out = shell.quote(executable.path),
-        srcs = " ".join([shell.quote(src.path) for src in ctx.files.srcs]),
-    )
-    inputs = ctx.files.srcs + ctx.files.tools + ctx.files.std_pkgs
-    ctx.actions.run_shell(
-        outputs = [executable],
+    # Local other input files needed.
+    go_cmd = find_go_cmd(ctx.files.tools)
+    stdlib_dir = ctx.files.stdlib[0]
+    inputs = [go_cmd, stdlib_dir] + ctx.files.srcs
+
+    # Run the script to compile and link the binary. The order of arguments
+    # is important!
+    arguments = [executable.path] + [f.path for f in inputs]
+    ctx.actions.run(
+        mnemonic = "GoToolBinary",
+        executable = ctx.executable._script,
+        arguments = arguments,
         inputs = inputs,
-        command = cmd,
-        mnemonic = "GoToolBuild",
+        outputs = [executable],
     )
 
     return [DefaultInfo(
@@ -126,10 +116,16 @@ go_tool_binary = rule(
             mandatory = True,
             doc = "Executable files that are part of a Go distribution",
         ),
-        "std_pkgs": attr.label_list(
-            allow_files = True,
+        "stdlib": attr.label(
             mandatory = True,
-            doc = "Pre-compiled standard library packages that are part of a Go distribution",
+            doc = "Package files for the standard library compiled by go_stdlib",
+        ),
+        "_script": attr.label(
+            allow_single_file = True,
+            executable = True,
+            cfg = "exec",
+            default = ":tool_binary.sh",
+            doc = "Script that compiles and links a builder binary",
         ),
     },
     doc = """Builds an executable program for the Go toolchain.
@@ -256,6 +252,44 @@ starting with "Test" in files with names ending in "_test.go" will be called
 using the go "testing" framework.""",
     test = True,
     toolchains = ["@rules_go_simple//:toolchain_type"],
+)
+
+def _go_stdlib_impl(ctx):
+    go_cmd = find_go_cmd(ctx.files.tools)
+    pkg_dir = ctx.actions.declare_directory(ctx.label.name)
+    ctx.actions.run(
+        mnemonic = "GoStdLib",
+        executable = ctx.executable._script,
+        arguments = [go_cmd.path, pkg_dir.path],
+        inputs = ctx.files.srcs + ctx.files.tools,
+        outputs = [pkg_dir],
+    )
+
+    return [DefaultInfo(files = depset([pkg_dir]))]
+
+go_stdlib = rule(
+    implementation = _go_stdlib_impl,
+    attrs = {
+        "srcs": attr.label_list(
+            allow_files = True,
+            mandatory = True,
+            doc = "Source files for standard library packages",
+        ),
+        "tools": attr.label_list(
+            allow_files = True,
+            mandatory = True,
+            doc = "Executable files that are part of a Go distribution",
+        ),
+        "_script": attr.label(
+            allow_single_file = True,
+            executable = True,
+            cfg = "exec",
+            default = ":stdlib.sh",
+            doc = "Script that compiles the Go standard library",
+        ),
+    },
+    doc = """Internal rule needed to build the standard library. Needed by
+go_tool_binary to bootstrap the whole toolchain.""",
 )
 
 def _collect_runfiles(ctx, direct_files, indirect_targets):

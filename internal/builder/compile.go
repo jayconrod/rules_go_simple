@@ -19,10 +19,10 @@ import (
 // before invoking the Go compiler.
 func compile(args []string) error {
 	// Process command line arguments.
-	var stdImportcfgPath, packagePath, outPath string
+	var stdlibPath, packagePath, outPath string
 	var archives []archive
 	fs := flag.NewFlagSet("compile", flag.ExitOnError)
-	fs.StringVar(&stdImportcfgPath, "stdimportcfg", "", "path to importcfg for the standard library")
+	fs.StringVar(&stdlibPath, "stdlib", "", "path to a directory containing compiled standard library packages")
 	fs.Var(archiveFlag{&archives}, "arc", "information about dependencies, formatted as packagepath=file (may be repeated)")
 	fs.StringVar(&packagePath, "p", "", "package path for the package being compiled")
 	fs.StringVar(&outPath, "o", "", "path to archive file the compiler should produce")
@@ -34,10 +34,14 @@ func compile(args []string) error {
 	srcs := make([]sourceInfo, 0, len(srcPaths))
 	filteredSrcPaths := make([]string, 0, len(srcPaths))
 	bctx := &build.Default
+	var errs []error
 	for _, srcPath := range srcPaths {
-		if src, err := loadSourceInfo(bctx, srcPath); err != nil {
-			return err
-		} else if src.match {
+		src, err := loadSourceInfo(bctx, srcPath)
+		if err != nil {
+			errs = append(errs, err)
+			continue
+		}
+		if src.match {
 			srcs = append(srcs, src)
 			filteredSrcPaths = append(filteredSrcPaths, srcPath)
 		}
@@ -45,11 +49,6 @@ func compile(args []string) error {
 
 	// Build an importcfg file that maps this package's imports to archive files
 	// from the standard library or direct dependencies.
-	stdArchiveMap, err := readImportcfg(stdImportcfgPath)
-	if err != nil {
-		return err
-	}
-
 	directArchiveMap := make(map[string]string)
 	for _, arc := range archives {
 		directArchiveMap[arc.packagePath] = arc.filePath
@@ -58,24 +57,29 @@ func compile(args []string) error {
 	archiveMap := make(map[string]string)
 	for _, src := range srcs {
 		for _, imp := range src.imports {
-			switch {
-			case imp == "unsafe":
+			if _, ok := archiveMap[imp]; ok {
+				// Already added.
 				continue
-
-			case imp == "C":
-				return fmt.Errorf("%s: cgo not supported", src.fileName)
-
-			case stdArchiveMap[imp] != "":
-				archiveMap[imp] = stdArchiveMap[imp]
-
-			case directArchiveMap[imp] != "":
-				archiveMap[imp] = directArchiveMap[imp]
-
-			default:
-				return fmt.Errorf("%s: import %q is not provided by any direct dependency", src.fileName, imp)
 			}
+			if imp == "unsafe" {
+				// Dummy package with no compiled archive.
+				continue
+			}
+			if imp == "C" {
+				errs = append(errs, fmt.Errorf("%s: cgo not supported", src.fileName))
+			}
+			if path, ok := directArchiveMap[imp]; ok {
+				archiveMap[imp] = path
+				continue
+			}
+			if stdPath, ok := isStdPackage(stdlibPath, imp); ok {
+				archiveMap[imp] = stdPath
+				continue
+			}
+			errs = append(errs, fmt.Errorf("%s: import %q is not provided by any direct dependency", src.fileName, imp))
 		}
 	}
+
 	importcfgPath, err := writeTempImportcfg(archiveMap)
 	if err != nil {
 		return err

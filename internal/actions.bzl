@@ -24,7 +24,7 @@ def go_compile(ctx, srcs, out, importpath = "", deps = []):
 
     args = ctx.actions.args()
     args.add("compile")
-    args.add("-stdimportcfg", toolchain.internal.stdimportcfg)
+    args.add("-stdlib", toolchain.internal.stdlib.path)
     dep_infos = [d.info for d in deps]
     args.add_all(dep_infos, before_each = "-arc", map_each = _format_arc)
     if importpath:
@@ -34,9 +34,8 @@ def go_compile(ctx, srcs, out, importpath = "", deps = []):
 
     inputs = (srcs +
               [dep.info.archive for dep in deps] +
-              [toolchain.internal.stdimportcfg] +
-              toolchain.internal.tools +
-              toolchain.internal.std_pkgs)
+              [toolchain.internal.stdlib] +
+              toolchain.internal.tools)
     ctx.actions.run(
         outputs = [out],
         inputs = inputs,
@@ -61,14 +60,13 @@ def go_link(ctx, out, main, deps = []):
         direct = [d.info for d in deps],
         transitive = [d.deps for d in deps],
     )
-    inputs = ([main, toolchain.internal.stdimportcfg] +
+    inputs = ([main, toolchain.internal.stdlib] +
               [d.archive for d in transitive_deps.to_list()] +
-              toolchain.internal.tools +
-              toolchain.internal.std_pkgs)
+              toolchain.internal.tools)
 
     args = ctx.actions.args()
     args.add("link")
-    args.add("-stdimportcfg", toolchain.internal.stdimportcfg)
+    args.add("-stdlib", toolchain.internal.stdlib.path)
     args.add_all(transitive_deps, before_each = "-arc", map_each = _format_arc)
     args.add("-main", main)
     args.add("-o", out)
@@ -97,15 +95,14 @@ def go_build_test(ctx, srcs, deps, out, rundir = "", importpath = ""):
     direct_dep_infos = [d.info for d in deps]
     transitive_dep_infos = depset(transitive = [d.deps for d in deps]).to_list()
     inputs = (srcs +
-              [toolchain.internal.stdimportcfg] +
+              [toolchain.internal.stdlib] +
               [d.archive for d in direct_dep_infos] +
               [d.archive for d in transitive_dep_infos] +
-              toolchain.internal.tools +
-              toolchain.internal.std_pkgs)
+              toolchain.internal.tools)
 
     args = ctx.actions.args()
     args.add("test")
-    args.add("-stdimportcfg", toolchain.internal.stdimportcfg)
+    args.add("-stdlib", toolchain.internal.stdlib.path)
     args.add_all(direct_dep_infos, before_each = "-direct", map_each = _format_arc)
     args.add_all(transitive_dep_infos, before_each = "-transitive", map_each = _format_arc)
     if rundir != "":

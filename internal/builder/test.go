@@ -44,10 +44,10 @@ type testArchiveInfo struct {
 // that into the main archive. Finally, test links the test executable.
 func test(args []string) error {
 	// Parse command line arguments.
-	var stdImportcfgPath, packagePath, outPath, runDir string
+	var stdlibPath, packagePath, outPath, runDir string
 	var directArchives, transitiveArchives []archive
 	fs := flag.NewFlagSet("test", flag.ExitOnError)
-	fs.StringVar(&stdImportcfgPath, "stdimportcfg", "", "path to importcfg for the standard library")
+	fs.StringVar(&stdlibPath, "stdlib", "", "path to a directory containing compiled standard library packages")
 	fs.StringVar(&packagePath, "p", "default", "string used to import the test library")
 	fs.Var(archiveFlag{&directArchives}, "direct", "information about direct dependencies")
 	fs.Var(archiveFlag{&transitiveArchives}, "transitive", "information about transitive dependencies")
@@ -97,7 +97,7 @@ func test(args []string) error {
 
 	// Build a map from package paths to archive files using the standard
 	// importcfg and -direct command line arguments.
-	archiveMap, err := readImportcfg(stdImportcfgPath)
+	archiveMap, err := listStdlibPaths(stdlibPath)
 	if err != nil {
 		return err
 	}
@@ -157,7 +157,7 @@ func test(args []string) error {
 	}
 	defer os.Remove(importcfgPath)
 
-	testMainArchiveFile, err := ioutil.TempFile("", "*-testmain.a")
+	testMainArchiveFile, err := os.CreateTemp("", "*-testmain.a")
 	if err != nil {
 		return err
 	}
