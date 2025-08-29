@@ -137,6 +137,83 @@
   },
   "selectedYankedVersions": {},
   "moduleExtensions": {
+    "//:go.bzl%go": {
+      "os:osx,arch:aarch64": {
+        "bzlTransitiveDigest": "haz8+5j+BPTY93S6NN8QoYFLua4EbO+73kH8K+kboJE=",
+        "usagesDigest": "GUznxnRDWCIE3HQm+8cj3mySqY0j9+N/KMrRYQQr20U=",
+        "recordedFileInputs": {},
+        "recordedDirentsInputs": {},
+        "envVariables": {},
+        "generatedRepoSpecs": {
+          "go_darwin_arm64": {
+            "repoRuleId": "@@//internal:repo.bzl%go_download",
+            "attributes": {
+              "urls": [
+                "https://go.dev/dl/go1.25.0.darwin-arm64.tar.gz"
+              ],
+              "sha256": "544932844156d8172f7a28f77f2ac9c15a23046698b6243f633b0a0b00c0749c",
+              "goos": "darwin",
+              "goarch": "arm64"
+            }
+          },
+          "go_linux_amd64": {
+            "repoRuleId": "@@//internal:repo.bzl%go_download",
+            "attributes": {
+              "urls": [
+                "https://go.dev/dl/go1.25.0.linux-amd64.tar.gz"
+              ],
+              "sha256": "2852af0cb20a13139b3448992e69b868e50ed0f8a1e5940ee1de9e19a123b613",
+              "goos": "linux",
+              "goarch": "amd64"
+            }
+          },
+          "go_linux_arm64": {
+            "repoRuleId": "@@//internal:repo.bzl%go_download",
+            "attributes": {
+              "urls": [
+                "https://go.dev/dl/go1.25.0.linux-arm64.tar.gz"
+              ],
+              "sha256": "05de75d6994a2783699815ee553bd5a9327d8b79991de36e38b66862782f54ae",
+              "goos": "linux",
+              "goarch": "arm64"
+            }
+          },
+          "go_windows_amd64": {
+            "repoRuleId": "@@//internal:repo.bzl%go_download",
+            "attributes": {
+              "urls": [
+                "https://go.dev/dl/go1.25.0.windows-amd64.zip"
+              ],
+              "sha256": "89efb4f9b30812eee083cc1770fdd2913c14d301064f6454851428f9707d190b",
+              "goos": "windows",
+              "goarch": "amd64"
+            }
+          },
+          "go_toolchains": {
+            "repoRuleId": "@@//internal:repo.bzl%go_toolchains",
+            "attributes": {
+              "repos": [
+                "go_darwin_arm64",
+                "go_linux_amd64",
+                "go_linux_arm64",
+                "go_windows_amd64"
+              ],
+              "goos_goarchs": [
+                "darwin_arm64",
+                "linux_amd64",
+                "linux_arm64",
+                "windows_amd64"
+              ]
+            }
+          }
+        },
+        "moduleExtensionMetadata": {
+          "useAllRepos": "NO",
+          "reproducible": false
+        },
+        "recordedRepoMappingEntries": []
+      }
+    },
     "@@rules_kotlin+//src/main/starlark/core/repositories:bzlmod_setup.bzl%rules_kotlin_extensions": {
       "general": {
         "bzlTransitiveDigest": "hUTp2w+RUVdL7ma5esCXZJAFnX7vLbVfLd7FwnQI6bU=",

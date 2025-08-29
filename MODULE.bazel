@@ -30,30 +30,23 @@ bazel_dep(name = "bazel_skylib", version = "1.7.1")
 # CPU architectures, used for toolchain selection.
 bazel_dep(name = "platforms", version = "1.0.0")
 
-# TODO: convert go_download into a module extension
+# go is a module extension. It lets us download things that aren't Bazel
+# modules. We use the go extension to download the Go toolchain, generate
+# a BUILD file, and register toolchains with Bazel.
+go = use_extension("//:go.bzl", "go")
 
-go_download = use_repo_rule("//:deps.bzl", "go_download")
+# This statement declares a download tag. After all MODULE.bazel files are
+# loaded, the go module extension considers all tags declared in any module.
+# It picks the highest version and lazily downloads archives for all supported
+# platforms.
+go.download(version = "1.25.0")
 
-go_download(
-    name = "go_darwin_arm64",
-    goarch = "arm64",
-    goos = "darwin",
-    sha256 = "544932844156d8172f7a28f77f2ac9c15a23046698b6243f633b0a0b00c0749c",
-    urls = ["https://go.dev/dl/go1.25.0.darwin-arm64.tar.gz"],
-)
+# The go extension generates a "go_toolchains" repo that contains toolchain
+# definitions for all supported platforms. This use_repo statement declares
+# that repo so we can refer to it here.
+use_repo(go, "go_toolchains")
 
-go_download(
-    name = "go_linux_amd64",
-    goarch = "amd64",
-    goos = "linux",
-    sha256 = "2852af0cb20a13139b3448992e69b868e50ed0f8a1e5940ee1de9e19a123b613",
-    urls = ["https://go.dev/dl/go1.25.0.linux-amd64.tar.gz"],
-)
-
-# register_toolchains makes one or more toolchain rules available for Bazel's
-# automatic toolchain selection. Bazel will pick whichever toolchain is
-# compatible with the execution and target platforms.
-register_toolchains(
-    "@go_darwin_arm64//:toolchain",
-    "@go_linux_amd64//:toolchain",
-)
+# Finally, we register the declared toolchains with Bazel. Bazel automatically
+# selects a toolchain based on the execution and target platforms, then
+# downloads and builds the toolchain files when needed.
+register_toolchains("@go_toolchains//:all")
