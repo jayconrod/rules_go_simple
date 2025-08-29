@@ -138,7 +138,7 @@
   "selectedYankedVersions": {},
   "moduleExtensions": {
     "//:go.bzl%go": {
-      "os:osx,arch:aarch64": {
+      "os:windows,arch:amd64": {
         "bzlTransitiveDigest": "haz8+5j+BPTY93S6NN8QoYFLua4EbO+73kH8K+kboJE=",
         "usagesDigest": "GUznxnRDWCIE3HQm+8cj3mySqY0j9+N/KMrRYQQr20U=",
         "recordedFileInputs": {},

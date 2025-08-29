@@ -1,9 +1,17 @@
 # Empty build file, just here to define a package.
 
-exports_files(
-    [
-        "stdlib.sh",
-        "tool_binary.sh",
-    ],
-    visibility = ["//visibility:private"],
+alias(
+    name = "stdlib_script",
+    actual = select({
+        "@platforms//os:windows": "stdlib.ps1",
+        "//conditions:default": "stdlib.sh",
+    }),
+)
+
+alias(
+    name = "tool_binary_script",
+    actual = select({
+        "@platforms//os:windows": "tool_binary.ps1",
+        "//conditions:default": "tool_binary.sh",
+    }),
 )

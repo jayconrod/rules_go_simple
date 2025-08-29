@@ -90,16 +90,26 @@ def _go_tool_binary_impl(ctx):
     # Run the script to compile and link the binary. The order of arguments
     # is important!
     arguments = [executable.path] + [f.path for f in inputs]
-    ctx.actions.run(
-        mnemonic = "GoToolBinary",
-        executable = ctx.executable._script,
-        arguments = arguments,
-        inputs = inputs,
-        outputs = [executable],
-    )
+    outputs = [executable]
+    if ctx.executable._script.path.endswith(".ps1"):
+        ctx.actions.run(
+            mnemonic = "GoToolBinary",
+            executable = "powershell",
+            arguments = ["-File", ctx.executable._script.path] + arguments,
+            inputs = inputs + [ctx.executable._script],
+            outputs = outputs,
+        )
+    else:
+        ctx.actions.run(
+            mnemonic = "GoToolBinary",
+            executable = ctx.executable._script,
+            arguments = arguments,
+            inputs = inputs,
+            outputs = outputs,
+        )
 
     return [DefaultInfo(
-        files = depset([executable]),
+        files = depset(outputs),
         executable = executable,
     )]
 
@@ -124,7 +134,7 @@ go_tool_binary = rule(
             allow_single_file = True,
             executable = True,
             cfg = "exec",
-            default = ":tool_binary.sh",
+            default = ":tool_binary_script",
             doc = "Script that compiles and links a builder binary",
         ),
     },
@@ -257,15 +267,27 @@ using the go "testing" framework.""",
 def _go_stdlib_impl(ctx):
     go_cmd = find_go_cmd(ctx.files.tools)
     pkg_dir = ctx.actions.declare_directory(ctx.label.name)
-    ctx.actions.run(
-        mnemonic = "GoStdLib",
-        executable = ctx.executable._script,
-        arguments = [go_cmd.path, pkg_dir.path],
-        inputs = ctx.files.srcs + ctx.files.tools,
-        outputs = [pkg_dir],
-    )
+    arguments = [go_cmd.path, pkg_dir.path]
+    inputs = ctx.files.srcs + ctx.files.tools
+    outputs = [pkg_dir]
 
-    return [DefaultInfo(files = depset([pkg_dir]))]
+    if ctx.executable._script.path.endswith(".ps1"):
+        ctx.actions.run(
+            mnemonic = "GoStdLib",
+            executable = "powershell",
+            arguments = ["-File", ctx.executable._script.path] + arguments,
+            inputs = inputs + [ctx.executable._script],
+            outputs = outputs,
+        )
+    else:
+        ctx.actions.run(
+            mnemonic = "GoStdLib",
+            executable = ctx.executable._script,
+            arguments = arguments,
+            inputs = inputs,
+            outputs = outputs,
+        )
+    return [DefaultInfo(files = depset(outputs))]
 
 go_stdlib = rule(
     implementation = _go_stdlib_impl,
@@ -284,7 +306,7 @@ go_stdlib = rule(
             allow_single_file = True,
             executable = True,
             cfg = "exec",
-            default = ":stdlib.sh",
+            default = ":stdlib_script",
             doc = "Script that compiles the Go standard library",
         ),
     },

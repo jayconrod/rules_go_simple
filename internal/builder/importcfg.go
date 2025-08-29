@@ -45,6 +45,7 @@ func listStdlibPaths(stdlibPath string) (_ map[string]string, err error) {
 		}
 		imp := strings.TrimPrefix(path, stdlibPath+string(os.PathSeparator))
 		imp = strings.TrimSuffix(imp, ".a")
+		imp = filepath.ToSlash(imp)
 		entries[imp] = path
 		return nil
 	})
