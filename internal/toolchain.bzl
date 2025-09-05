@@ -7,7 +7,7 @@
 
 go_toolchain creates a provider as described in GoToolchainInfo in
 providers.bzl. toolchains and go_toolchains are declared in the build file
-generated in go_download in repo.bzl.
+generated in go_toolchains in repo.bzl.
 """
 
 load(

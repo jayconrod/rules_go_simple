@@ -10,15 +10,15 @@ call functions to create actions. This allows action code to be shared
 by multiple rules.
 """
 
-def go_compile(ctx, srcs, out, importpath = "", deps = []):
+def go_compile(ctx, *, srcs, importpath, deps, out):
     """Compiles a single Go package from sources.
 
     Args:
         ctx: analysis context.
         srcs: list of source Files to be compiled.
-        out: output .a File.
         importpath: the path other libraries may use to import this package.
         deps: list of GoLibraryInfo objects for direct dependencies.
+        out: output .a File.
     """
     toolchain = ctx.toolchains["@rules_go_simple//:toolchain_type"]
 
@@ -45,14 +45,14 @@ def go_compile(ctx, srcs, out, importpath = "", deps = []):
         mnemonic = "GoCompile",
     )
 
-def go_link(ctx, out, main, deps = []):
+def go_link(ctx, *, main, deps, out):
     """Links a Go executable.
 
     Args:
         ctx: analysis context.
-        out: output executable file.
         main: archive file for the main package.
         deps: list of GoLibraryInfo objects for direct dependencies.
+        out: output executable file.
     """
     toolchain = ctx.toolchains["@rules_go_simple//:toolchain_type"]
 
@@ -80,16 +80,16 @@ def go_link(ctx, out, main, deps = []):
         mnemonic = "GoLink",
     )
 
-def go_build_test(ctx, srcs, deps, out, rundir = "", importpath = ""):
+def go_build_test(ctx, *, srcs, deps, rundir, importpath, out):
     """Compiles and links a Go test executable.
 
     Args:
         ctx: analysis context.
         srcs: list of source Files to be compiled.
         deps: list of GoLibraryInfo objects for direct dependencies.
-        out: output executable file.
         importpath: import path of the internal test archive.
         rundir: directory the test should change to before executing.
+        out: output executable file.
     """
     toolchain = ctx.toolchains["@rules_go_simple//:toolchain_type"]
     direct_dep_infos = [d.info for d in deps]

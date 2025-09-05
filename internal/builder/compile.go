@@ -6,6 +6,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"go/build"
@@ -14,19 +15,21 @@ import (
 )
 
 // compile produces a Go archive file (.a) from a list of .go sources.  This
-// function will filter sources using build constraints (OS and architecture
-// file name suffixes and +build comments) and will build an importcfg file
+// function filters sources using build constraints (OS and architecture
+// file name suffixes and +build comments) and builds an importcfg file
 // before invoking the Go compiler.
 func compile(args []string) error {
 	// Process command line arguments.
 	var stdlibPath, packagePath, outPath string
 	var archives []archive
-	fs := flag.NewFlagSet("compile", flag.ExitOnError)
+	fs := flag.NewFlagSet("compile", flag.ContinueOnError)
 	fs.StringVar(&stdlibPath, "stdlib", "", "path to a directory containing compiled standard library packages")
 	fs.Var(archiveFlag{&archives}, "arc", "information about dependencies, formatted as packagepath=file (may be repeated)")
 	fs.StringVar(&packagePath, "p", "", "package path for the package being compiled")
 	fs.StringVar(&outPath, "o", "", "path to archive file the compiler should produce")
-	fs.Parse(args)
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
 	srcPaths := fs.Args()
 
 	// Extract metadata from source files and filter out sources using
@@ -78,6 +81,9 @@ func compile(args []string) error {
 			}
 			errs = append(errs, fmt.Errorf("%s: import %q is not provided by any direct dependency", src.fileName, imp))
 		}
+	}
+	if err := errors.Join(errs...); err != nil {
+		return err
 	}
 
 	importcfgPath, err := writeTempImportcfg(archiveMap)

@@ -8,8 +8,6 @@ load(
     "go_tool_binary",
 )
 
-package(default_visibility = ["//visibility:public"])
-
 # tools contains executable files that are part of the toolchain.
 filegroup(
     name = "tools",
@@ -28,6 +26,7 @@ go_stdlib(
         exclude = ["src/cmd/**"],
     ),
     tools = [":tools"],
+    visibility = ["//visibility:public"],
 )
 
 # builder is an executable used by rules_go_simple to perform most actions.
@@ -37,4 +36,5 @@ go_tool_binary(
     srcs = ["@rules_go_simple//internal/builder:builder_srcs"],
     stdlib = ":stdlib",
     tools = [":tools"],
+    visibility = ["//visibility:public"],
 )

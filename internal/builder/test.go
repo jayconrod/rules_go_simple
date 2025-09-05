@@ -10,7 +10,6 @@ import (
 	"flag"
 	"fmt"
 	"go/build"
-	"io/ioutil"
 	"os"
 	"strings"
 	"text/template"
@@ -114,7 +113,7 @@ func test(args []string) error {
 			mainInfo.TestMainPackageName = testInfo.PackageName
 		}
 
-		testArchivePath, err = compileTestArchive(testInfo.ImportPath, testInfo.srcPaths, testInfo.srcs, archiveMap)
+		testArchivePath, err = compileTestArchive(testInfo.ImportPath, testInfo.srcPaths, archiveMap)
 		if err != nil {
 			return err
 		}
@@ -132,7 +131,7 @@ func test(args []string) error {
 			mainInfo.TestMainPackageName = xtestInfo.PackageName
 		}
 
-		xtestArchivePath, err = compileTestArchive(xtestInfo.ImportPath, xtestInfo.srcPaths, xtestInfo.srcs, archiveMap)
+		xtestArchivePath, err = compileTestArchive(xtestInfo.ImportPath, xtestInfo.srcPaths, archiveMap)
 		if err != nil {
 			return err
 		}
@@ -174,13 +173,13 @@ func test(args []string) error {
 	return runLinker(testMainArchivePath, importcfgPath, outPath)
 }
 
-func compileTestArchive(packagePath string, srcPaths []string, srcs []sourceInfo, archiveMap map[string]string) (string, error) {
+func compileTestArchive(packagePath string, srcPaths []string, archiveMap map[string]string) (string, error) {
 	importcfgPath, err := writeTempImportcfg(archiveMap)
 	if err != nil {
 		return "", err
 	}
 
-	tmpArchiveFile, err := ioutil.TempFile("", "*-test.a")
+	tmpArchiveFile, err := os.CreateTemp("", "*-test.a")
 	if err != nil {
 		return "", err
 	}
@@ -237,7 +236,7 @@ func main() {
 `))
 
 func generateTestMain(mainInfo testMainInfo) (testmainPath string, err error) {
-	testmainFile, err := ioutil.TempFile("", "*-testmain.go")
+	testmainFile, err := os.CreateTemp("", "*-testmain.go")
 	if err != nil {
 		return "", err
 	}

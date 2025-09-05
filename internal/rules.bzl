@@ -17,22 +17,18 @@ def _go_binary_impl(ctx):
     # Load the toolchain.
     go_toolchain = ctx.toolchains["@rules_go_simple//:toolchain_type"]
 
-    # Declare an output file for the main package and compile it from srcs. All
-    # our output files will start with a prefix to avoid conflicting with
-    # other rules.
-    main_archive = ctx.actions.declare_file("{name}_/main.a".format(name = ctx.label.name))
+    # Declare an output file for the main package and compile it from srcs.
+    main_archive = ctx.actions.declare_file("{name}.a".format(name = ctx.label.name))
     go_toolchain.compile(
         ctx,
         srcs = ctx.files.srcs,
+        importpath = "main",
         deps = [dep[GoLibraryInfo] for dep in ctx.attr.deps],
         out = main_archive,
     )
 
-    # Declare an output file for the executable and link it. Note that output
-    # files may not have the same name as the rule, so we still need to use the
-    # prefix here.
-    executable_path = "{name}_/{name}".format(name = ctx.label.name)
-    executable = ctx.actions.declare_file(executable_path)
+    # Declare an output file for the executable and link it.
+    executable = ctx.actions.declare_file(ctx.label.name)
     go_toolchain.link(
         ctx,
         main = main_archive,
@@ -84,7 +80,7 @@ def _go_tool_binary_impl(ctx):
 
     # Local other input files needed.
     go_cmd = find_go_cmd(ctx.files.tools)
-    stdlib_dir = ctx.files.stdlib[0]
+    stdlib_dir = ctx.file.stdlib
     inputs = [go_cmd, stdlib_dir] + ctx.files.srcs
 
     # Run the script to compile and link the binary. The order of arguments
@@ -118,6 +114,7 @@ go_tool_binary = rule(
         ),
         "stdlib": attr.label(
             mandatory = True,
+            allow_single_file = True,
             doc = "Package files for the standard library compiled by go_stdlib",
         ),
         "_script": attr.label(
@@ -145,7 +142,7 @@ def _go_library_impl(ctx):
     toolchain = ctx.toolchains["@rules_go_simple//:toolchain_type"]
 
     # Declare an output file for the library package and compile it from srcs.
-    archive = ctx.actions.declare_file("{name}_/pkg.a".format(name = ctx.label.name))
+    archive = ctx.actions.declare_file("{name}.a".format(name = ctx.label.name))
     toolchain.compile(
         ctx,
         srcs = ctx.files.srcs,
@@ -204,8 +201,7 @@ go_library = rule(
 def _go_test_impl(ctx):
     toolchain = ctx.toolchains["@rules_go_simple//:toolchain_type"]
 
-    executable_path = "{name}_/{name}".format(name = ctx.label.name)
-    executable = ctx.actions.declare_file(executable_path)
+    executable = ctx.actions.declare_file(ctx.label.name)
     toolchain.build_test(
         ctx,
         srcs = ctx.files.srcs,
@@ -255,6 +251,12 @@ using the go "testing" framework.""",
 )
 
 def _go_stdlib_impl(ctx):
+    # Declare an output directory for the compiled standard library, not a file.
+    # The compiled standard library has an .a file for each package with a path
+    # matching the import path (fmt.a, archive/tar.a, and so on). New packages
+    # may be added over time, so we don't know exactly what files will be
+    # produced. It doesn't matter as far as Bazel is concerned though: we can
+    # treat the whole thing as a single File.
     go_cmd = find_go_cmd(ctx.files.tools)
     pkg_dir = ctx.actions.declare_directory(ctx.label.name)
     ctx.actions.run(
@@ -289,7 +291,7 @@ go_stdlib = rule(
         ),
     },
     doc = """Internal rule needed to build the standard library. Needed by
-go_tool_binary to bootstrap the whole toolchain.""",
+go_tool_binary and the rest of the toolchain.""",
 )
 
 def _collect_runfiles(ctx, direct_files, indirect_targets):

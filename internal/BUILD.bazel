@@ -1,5 +1,8 @@
-# Empty build file, just here to define a package.
+# Mostly empty build file, here to define a package.
 
+# An exports_files declaration makes these source files available in
+# other packages. They're implicit dependencies of the go_stdlib
+# and go_tool_binary rules.
 exports_files(
     [
         "stdlib.sh",

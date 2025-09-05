@@ -14,7 +14,7 @@ import (
 )
 
 func TestBinWithLibs(t *testing.T) {
-	binPath := strings.TrimPrefix(flag.Args()[0], "tests/")
+	binPath := "./" + strings.TrimPrefix(flag.Args()[0], "tests/")
 	got, err := exec.Command(binPath).Output()
 	if err != nil {
 		t.Fatal(err)

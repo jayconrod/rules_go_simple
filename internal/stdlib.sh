@@ -10,26 +10,32 @@ go_cmd="$1"
 pkg_dir="$2"
 
 # Create the GOCACHE and GOROOT directories, and delete them on exit.
+# Both must be temporary directories with random names. This script may run
+# in multiple concurrent actions (if we're building for multiple platforms),
+# and if Bazel is run without sandboxing, those actions must not conflict
+# with each other by writing something unexpected into the output directory.
+#
 # GOCACHE stores compiled output files.
 # GOROOT stores a copy of the source tree.
 orig_goroot=$("$go_cmd" env GOROOT)
 export GOTOOLDIR=$("$go_cmd" env GOTOOLDIR)
-export GOCACHE="$PWD/_${pkg_dir}_gocache"
-export GOROOT="${orig_goroot}_copy"
-
-trap "rm -rf \"$GOCACHE\" \"$GOROOT\"" EXIT
+export GOCACHE=$(mktemp -d -t gocache)
+export GOROOT=$(mktemp -d -t goroot)
+cleanup_paths=("$GOCACHE" "$GOROOT")
+trap 'chmod -R u+w "${cleanup_paths[@]}" && rm -rf "${cleanup_paths[@]}"' EXIT
 
 # Copy the source tree, replacing symbolic links with hard links.
 # When Bazel constructs the action's execution directory, it may use symbolic
 # links for input files, but the Go command does not allow this for embeded
 # files, so we need to undo that.
-cp -RLl "$orig_goroot" "$GOROOT"
+cp -RLl "$orig_goroot"/* "$GOROOT"
 
 # Compile the packages in the standard library.
 # Instead of 'go build std' we use 'go list -export std' because we want to
 # know the names of the compiled files.
 mkdir -p "$pkg_dir"
 pkg_list="$(mktemp -t pkg_list)"
+cleanup_paths+=("$pkg_list")
 "$go_cmd" list -export -f '{{.ImportPath}}={{.Export}}' std >"$pkg_list"
 
 # Move the compiled files out of the cache.

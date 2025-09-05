@@ -139,7 +139,7 @@
   "moduleExtensions": {
     "//:go.bzl%go": {
       "os:osx,arch:aarch64": {
-        "bzlTransitiveDigest": "haz8+5j+BPTY93S6NN8QoYFLua4EbO+73kH8K+kboJE=",
+        "bzlTransitiveDigest": "hyA92oTqbZnKJo6bVvlscV17Oy4sMxzCFHIm/v3ZkFU=",
         "usagesDigest": "GUznxnRDWCIE3HQm+8cj3mySqY0j9+N/KMrRYQQr20U=",
         "recordedFileInputs": {},
         "recordedDirentsInputs": {},
