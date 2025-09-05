@@ -12,32 +12,38 @@ by multiple rules.
 
 load("@bazel_skylib//lib:shell.bzl", "shell")
 
-def go_compile(ctx, srcs, out):
+def go_compile(ctx, *, srcs, importpath, stdlib, out):
     """Compiles a single Go package from sources.
 
     Args:
         ctx: analysis context.
         srcs: list of source Files to be compiled.
-        out: output .a file. Should have the importpath as a suffix,
-            for example, library "example.com/foo" should have the path
-            "somedir/example.com/foo.a".
+        importpath: the path other libraries may use to import this package.
+        stdlib: a File for the compiled standard library directory.
+        out: output .a File.
     """
-    cmd = "go tool compile -o {out} -- {srcs}".format(
+    stdlib_importcfg = stdlib.path + "/importcfg"
+    cmd = "go tool compile -o {out} -p {importpath} -importcfg {importcfg} -- {srcs}".format(
         out = shell.quote(out.path),
+        importpath = shell.quote(importpath),
+        importcfg = stdlib_importcfg,
         srcs = " ".join([shell.quote(src.path) for src in srcs]),
     )
     # EXERCISE: create action
 
-def go_link(ctx, out, main):
+def go_link(ctx, *, main, stdlib, out):
     """Links a Go executable.
 
     Args:
         ctx: analysis context.
-        out: output executable file.
         main: archive file for the main package.
+        stdlib: a File for the compile standard library directory.
+        out: output executable file.
     """
-    cmd = "go tool link -o {out} -- {main}".format(
+    stdlib_importcfg = stdlib.path + "/importcfg"
+    cmd = "go tool link -o {out} -importcfg {importcfg} -- {main}".format(
         out = shell.quote(out.path),
+        importcfg = shell.quote(stdlib_importcfg),
         main = shell.quote(main.path),
     )
     # EXERCISE: create action
