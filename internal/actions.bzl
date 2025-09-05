@@ -22,11 +22,22 @@ def go_compile(ctx, *, srcs, importpath, stdlib, out):
         stdlib: a File for the compiled standard library directory.
         out: output .a File.
     """
-    stdlib_importcfg = stdlib.path + "/importcfg"
-    cmd = "go tool compile -o {out} -p {importpath} -importcfg {importcfg} -- {srcs}".format(
+
+    cmd = r"""
+    importcfg=$(mktemp)
+    pushd {stdlib} >/dev/null
+    for file in $(find -L . -type f); do
+      without_suffix="${{file%.a}}"
+      pkg_path="${{without_suffix#./}}"
+      abs_file="$PWD/$file"
+      printf "packagefile %s=%s\n" "$pkg_path" "$abs_file" >>"$importcfg"
+    done
+    popd >/dev/null
+    go tool compile -o {out} -p {importpath} -importcfg "$importcfg" -- {srcs}
+    """.format(
+        stdlib = shell.quote(stdlib.path),
         out = shell.quote(out.path),
         importpath = shell.quote(importpath),
-        importcfg = stdlib_importcfg,
         srcs = " ".join([shell.quote(src.path) for src in srcs]),
     )
     ctx.actions.run_shell(
@@ -47,11 +58,21 @@ def go_link(ctx, *, main, stdlib, out):
         stdlib: a File for the compile standard library directory.
         out: output executable file.
     """
-    stdlib_importcfg = stdlib.path + "/importcfg"
-    cmd = "go tool link -o {out} -importcfg {importcfg} -- {main}".format(
-        out = shell.quote(out.path),
-        importcfg = shell.quote(stdlib_importcfg),
+    cmd = r"""
+    importcfg=$(mktemp)
+    pushd {stdlib} >/dev/null
+    for file in $(find -L . -type f); do
+      without_suffix="${{file%.a}}"
+      pkg_path="${{without_suffix#./}}"
+      abs_file="$PWD/$file"
+      printf "packagefile %s=%s\n" "$pkg_path" "$abs_file" >>"$importcfg"
+    done
+    popd >/dev/null
+    go tool link -o {out} -importcfg "$importcfg" -- {main}
+    """.format(
+        stdlib = shell.quote(stdlib.path),
         main = shell.quote(main.path),
+        out = shell.quote(out.path),
     )
     ctx.actions.run_shell(
         mnemonic = "GoLink",
