@@ -8,7 +8,7 @@ load(
 go_test(
     name = "hello_test",
     srcs = ["hello_test.go"],
-    args = ["-hello=$(location :hello)"],
+    args = ["-hello=$(rootpath :hello)"],
     data = [":hello"],
 )
 
@@ -23,7 +23,7 @@ go_binary(
 go_test(
     name = "bin_with_libs_test",
     srcs = ["bin_with_libs_test.go"],
-    args = ["$(location :bin_with_libs)"],
+    args = ["$(rootpath :bin_with_libs)"],
     data = [":bin_with_libs"],
 )
 
@@ -59,7 +59,7 @@ go_library(
 go_test(
     name = "data_test",
     srcs = ["data_test.go"],
-    args = ["$(location :list_data_bin)"],
+    args = ["$(rootpath :list_data_bin)"],
     data = [":list_data_bin"],
 )
 
