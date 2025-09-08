@@ -3,7 +3,7 @@ load("//:def.bzl", "go_binary")
 sh_test(
     name = "hello_test",
     srcs = ["hello_test.sh"],
-    args = ["$(location :hello)"],
+    args = ["$(rootpath :hello)"],
     data = [":hello"],
 )
 
