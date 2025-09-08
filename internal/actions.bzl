@@ -12,18 +12,16 @@ by multiple rules.
 
 load("@bazel_skylib//lib:shell.bzl", "shell")
 
-def go_compile(ctx, *, importpath, srcs, stdlib, out, deps):
+def go_compile(ctx, *, srcs, importpath, stdlib, deps, out):
     """Compiles a single Go package from sources.
 
     Args:
         ctx: analysis context.
-        importpath: the path other libraries may use to import this package.
         srcs: list of source Files to be compiled.
-        stdlib: a GoStdLibInfo provider for the standard library.
-        out: output .a file. Should have the importpath as a suffix,
-            for example, library "example.com/foo" should have the path
-            "somedir/example.com/foo.a".
+        importpath: the path other libraries may use to import this package.
+        stdlib: a File for the compiled standard library directory.
         deps: list of GoLibraryInfo objects for direct dependencies.
+        out: output .a File.
     """
 
     dep_importcfg_text = "\n".join([
@@ -33,44 +31,47 @@ def go_compile(ctx, *, importpath, srcs, stdlib, out, deps):
         )
         for dep in deps
     ])
-    command = """
-set -o errexit
-export GOPATH=/dev/null  # suppress warning
+    cmd = r"""
 importcfg=$(mktemp)
-cat >"${{importcfg}}" {stdlib_importcfg} - <<'EOF'
+pushd {stdlib} >/dev/null
+for file in $(find -L . -type f); do
+  without_suffix="${{file%.a}}"
+  pkg_path="${{without_suffix#./}}"
+  abs_file="$PWD/$file"
+  printf "packagefile %s=%s\n" "$pkg_path" "$abs_file" >>"$importcfg"
+done
+popd >/dev/null
+cat >>"$importcfg" <<'EOF'
 {dep_importcfg_text}
 EOF
-go tool compile -o {out} -p {importpath} -importcfg "${{importcfg}}" -- {srcs}
-rm "${{importcfg}}"
+go tool compile -o {out} -p {importpath} -importcfg "$importcfg" -- {srcs}
 """.format(
-        stdlib_importcfg = shell.quote(stdlib.importcfg.path),
+        stdlib = shell.quote(stdlib.path),
         dep_importcfg_text = dep_importcfg_text,
         out = shell.quote(out.path),
         importpath = shell.quote(importpath),
         srcs = " ".join([shell.quote(src.path) for src in srcs]),
     )
-    inputs = depset(
-        direct = srcs + [dep.info.archive for dep in deps],
-        transitive = [stdlib.files],
-    )
 
+    inputs = srcs + [stdlib] + [dep.info.archive for dep in deps]
     ctx.actions.run_shell(
+        mnemonic = "GoCompile",
         outputs = [out],
         inputs = inputs,
-        command = command,
-        mnemonic = "GoCompile",
+        command = cmd,
+        env = {"GOPATH": "/dev/null"},  # suppress warning
         use_default_shell_env = True,
     )
 
-def go_link(ctx, *, out, stdlib, main, deps):
+def go_link(ctx, *, main, stdlib, deps, out):
     """Links a Go executable.
 
     Args:
         ctx: analysis context.
-        out: output executable file.
-        stdlib: a GoStdLibInfo provider for the standard library.
         main: archive file for the main package.
+        stdlib: a File for the compiled standard library directory.
         deps: list of GoLibraryInfo objects for direct dependencies.
+        out: output executable file.
     """
 
     deps_set = depset(
@@ -84,83 +85,32 @@ def go_link(ctx, *, out, stdlib, main, deps):
         )
         for dep in deps_set.to_list()
     ])
-    command = """
-set -o errexit
-export GOPATH=/dev/null  # suppress warning
+    cmd = r"""
 importcfg=$(mktemp)
-cat >"${{importcfg}}" {stdlib_importcfg} - <<'EOF'
+pushd {stdlib} >/dev/null
+for file in $(find -L . -type f); do
+  without_suffix="${{file%.a}}"
+  pkg_path="${{without_suffix#./}}"
+  abs_file="$PWD/$file"
+  printf "packagefile %s=%s\n" "$pkg_path" "$abs_file" >>"$importcfg"
+done
+cat >>"$importcfg" <<'EOF'
 {dep_importcfg_text}
 EOF
-go tool link -o {out} -importcfg "${{importcfg}}" -- {main}
+popd >/dev/null
+go tool link -o {out} -importcfg "$importcfg" -- {main}
 """.format(
-        stdlib_importcfg = shell.quote(stdlib.importcfg.path),
+        stdlib = shell.quote(stdlib.path),
         dep_importcfg_text = dep_importcfg_text,
-        out = shell.quote(out.path),
         main = shell.quote(main.path),
+        out = shell.quote(out.path),
     )
-    inputs = depset(
-        direct = [main] + [d.archive for d in deps_set.to_list()],
-        transitive = [stdlib.files],
-    )
-
+    inputs = [main, stdlib] + [d.archive for d in deps_set.to_list()]
     ctx.actions.run_shell(
+        mnemonic = "GoLink",
         outputs = [out],
         inputs = inputs,
-        command = command,
-        mnemonic = "GoLink",
+        command = cmd,
+        env = {"GOPATH": "/dev/null"},  # suppress warning
         use_default_shell_env = True,
     )
-
-def go_build_stdlib(ctx, out_importcfg, out_packages):
-    """Builds the standard library.
-
-    Args:
-        ctx: analysis context.
-        out_importcfg: a Go importcfg file, mapping package paths to file paths
-            for packages in the standard library. The paths are relative to
-            the Bazel exec root, so this file can be used as an input to
-            actions.
-        out_packages: a directory containing compiled packages (.a files)
-            from the standard library. The directory layout is unspecified;
-            the location of each file is written in out_importcfg.
-    """
-    command = GO_BUILD_STDLIB_TEMPLATE.format(
-        out_importcfg = shell.quote(out_importcfg.path),
-        out_packages = shell.quote(out_packages.path),
-    )
-    ctx.actions.run_shell(
-        outputs = [out_importcfg, out_packages],
-        command = command,
-        mnemonic = "GoStdLib",
-        use_default_shell_env = True,
-    )
-
-# GO_BUILD_STDLIB_TEMPLATE is a crude Bash script that builds the standard
-# library.
-GO_BUILD_STDLIB_TEMPLATE = """
-set -o errexit
-
-# Dereference symbolic links in the working directory path. 'go list' below
-# will print absolute paths without symbolic links. If we want to trim
-# the working directory with sed, then $PWD must not contain symbolc links.
-cd "$(realpath .)"
-
-# Set GOPATH to a dummy value. This silences a warning triggered by
-# $HOME not being set.
-export GOPATH=/dev/null
-
-# Set GOCACHE to the output package directory. 'go list' will write compiled
-# packages here.
-export GOCACHE="$(realpath {out_packages})"
-
-# Compile packages and write the importcfg saying where they are.
-# 'go list' normally doesn't build anything, but with -export, it needs to
-# print output file names in the cache, and it needs to actually compile those
-# files first. We use a fancy format string with -f so it tells us where those
-# files are. The output file names are absolute paths, which won't be usable
-# in other Bazel actions if sandboxing or remote execution are used, so we
-# trim everything before $(pwd) using sed.
-go list -export -f '{{{{if .Export}}}}packagefile {{{{.ImportPath}}}}={{{{.Export}}}}{{{{end}}}}' std | \
-  sed -E -e "s,=$(pwd)/,=," \\
-  >{out_importcfg}
-"""
