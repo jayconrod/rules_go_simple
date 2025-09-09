@@ -1,0 +1,62 @@
+# The MODULE.bazel file appears in the root directory of each Bazel module.
+# Its main purpose is to list the other Bazel modules that this module depends
+# on. MODULE.bazel may also contain non-module dependencies declared with
+# repository rules or module extensions. It may have other declarations too
+# like toolchain registrations.
+
+# The string below is this module's documentation string. It may be shown
+# on the Bazel Central Registry and other places.
+"""
+rules_go_simple is a simple set of Bazel rules for building Go code. It
+is intended to be a simple, clean, minimal example of how to write Bazel
+rules for new languages.
+"""
+
+# The module declaration sets this module's name. You can use this name to
+# refer to targets within this module. Other modules can depend on this module
+# using this name.
+module(name = "rules_go_simple")
+
+# bazel_dep declarations register dependencies on other modules.
+# Bazel recursively fetches their MODULE.bazel files and other metadata
+# from the Bazel Central Registry (or whatever registry you're using)
+# and selects a version of each module to use, which may be higher than the
+# version listed here if another module requires a higher version.
+
+# bazel_skylib is a common library for writing and testing Bazel rules.
+bazel_dep(name = "bazel_skylib", version = "1.7.1")
+
+# platforms contains constraints matching various operating systems and
+# CPU architectures, used for toolchain selection.
+bazel_dep(name = "platforms", version = "1.0.0")
+
+# Load the go_download repository rule to download and set up a Go distribution.
+# The syntax is different than the load statements in BUILD.bazel and .bzl
+# files. use_repo_rule calls are evaluated later, after all MODULE.bazel files
+# are evaluated and Bazel has selected which versions to use.
+go_download = use_repo_rule("//:go.bzl", "go_download")
+
+# Download distributions for macOS and Linux.
+go_download(
+    name = "go_darwin_arm64",
+    goarch = "arm64",
+    goos = "darwin",
+    sha256 = "544932844156d8172f7a28f77f2ac9c15a23046698b6243f633b0a0b00c0749c",
+    urls = ["https://go.dev/dl/go1.25.0.darwin-arm64.tar.gz"],
+)
+
+go_download(
+    name = "go_linux_amd64",
+    goarch = "amd64",
+    goos = "linux",
+    sha256 = "2852af0cb20a13139b3448992e69b868e50ed0f8a1e5940ee1de9e19a123b613",
+    urls = ["https://go.dev/dl/go1.25.0.linux-amd64.tar.gz"],
+)
+
+# Register toolchains from both versions. Unfortunately, this means we'll
+# actually download and extract both archives, even though we only need one.
+# We'll fix that in the next version.
+register_toolchains(
+    "@go_darwin_arm64//:toolchain",
+    "@go_linux_amd64//:toolchain",
+)

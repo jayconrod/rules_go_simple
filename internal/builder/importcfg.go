@@ -8,45 +8,50 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"io/fs"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 )
 
-// readImportcfg parses an importcfg file. It returns a map from package paths
-// to archive file paths.
-func readImportcfg(importcfgPath string) (map[string]string, error) {
-	archiveMap := make(map[string]string)
+// isStdPackage returns the path to a compile package file in the standard
+// library and a bool indicating whether it exists.
+func isStdPackage(stdlibPath, imp string) (pkgFile string, exists bool) {
+	pkgFile = filepath.Join(stdlibPath, imp+".a")
+	_, err := os.Stat(pkgFile)
+	return pkgFile, err == nil
+}
 
-	data, err := os.ReadFile(importcfgPath)
+// listStdlibPaths returns a map from standard library import strings to
+// compiled package file paths. This map may be used to write an importcfg file.
+func listStdlibPaths(stdlibPath string) (_ map[string]string, err error) {
+	defer func() {
+		if err != nil {
+			err = fmt.Errorf("listing std paths: %w", err)
+		}
+	}()
+	stdlibPath, err = filepath.Abs(stdlibPath)
 	if err != nil {
 		return nil, err
 	}
-
-	// based on parsing code in cmd/link/internal/ld/ld.go
-	for lineNum, line := range strings.Split(string(data), "\n") {
-		lineNum++ // 1-based
-		line = strings.TrimSpace(line)
-		if line == "" || strings.HasPrefix(line, "#") {
-			continue
+	entries := make(map[string]string)
+	err = filepath.WalkDir(stdlibPath, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
 		}
-
-		var verb, args string
-		if i := strings.Index(line, " "); i < 0 {
-			verb = line
-		} else {
-			verb, args = line[:i], strings.TrimSpace(line[i+1:])
+		if !strings.HasSuffix(path, ".a") || d.IsDir() {
+			return nil
 		}
-		var before, after string
-		if i := strings.Index(args, "="); i >= 0 {
-			before, after = args[:i], args[i+1:]
-		}
-		if verb == "packagefile" {
-			archiveMap[before] = after
-		}
+		imp := strings.TrimPrefix(path, stdlibPath+string(os.PathSeparator))
+		imp = strings.TrimSuffix(imp, ".a")
+		entries[imp] = path
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
-
-	return archiveMap, nil
+	return entries, nil
 }
 
 // writeTempImportcfg writes a temporary importcfg file. The caller is

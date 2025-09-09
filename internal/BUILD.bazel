@@ -1,11 +1,12 @@
-sh_binary(
-    name = "build_stdlib",
-    srcs = ["build_stdlib.sh"],
-    visibility = ["//visibility:public"],
-)
+# Mostly empty build file, here to define a package.
 
-sh_binary(
-    name = "build_tool",
-    srcs = ["build_tool.sh"],
-    visibility = ["//visibility:public"],
+# An exports_files declaration makes these source files available in
+# other packages. They're implicit dependencies of the go_stdlib
+# and go_tool_binary rules.
+exports_files(
+    [
+        "stdlib.sh",
+        "tool_binary.sh",
+    ],
+    visibility = ["//visibility:private"],
 )

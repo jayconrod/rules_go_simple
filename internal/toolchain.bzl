@@ -16,28 +16,16 @@ load(
 )
 load(
     ":actions.bzl",
-    "find_tool",
     "go_build_test",
     "go_compile",
     "go_link",
 )
-load(
-    ":providers.bzl",
-    "GoStdLibInfo",
-)
+load(":util.bzl", "find_go_cmd")
 
 def _go_toolchain_impl(ctx):
     # Find important files and paths.
-    go_exe = find_tool("go", ctx.files.tools)
-    env = {
-        "GOHOSTARCH": ctx.attr.gohostarch,
-        "GOHOSTOS": ctx.attr.gohostos,
-        "GOROOT": paths.dirname(paths.dirname(go_exe.path)),
-    }
-    files = depset(
-        direct = ctx.files.tools,
-        transitive = [ctx.attr.stdlib[GoStdLibInfo].files],
-    )
+    go_cmd = find_go_cmd(ctx.files.tools)
+    env = {"GOROOT": paths.dirname(paths.dirname(go_cmd.path))}
 
     # Return a TooclhainInfo provider. This is the object that rules get
     # when they ask for the toolchain.
@@ -52,12 +40,11 @@ def _go_toolchain_impl(ctx):
         # Think of these like private fields in a class. Actions may use these
         # (they are methods of the class) but rules may not (they are clients).
         internal = struct(
-            go_exe = go_exe,
+            go_cmd = go_cmd,
             env = env,
             builder = ctx.executable.builder,
-            stdlib = ctx.attr.stdlib[GoStdLibInfo],
             tools = ctx.files.tools,
-            files = files,
+            stdlib = ctx.file.stdlib,
         ),
     )]
 
@@ -70,25 +57,15 @@ go_toolchain = rule(
             cfg = "exec",
             doc = "Executable that performs most actions",
         ),
-        "gohostarch": attr.string(
-            mandatory = True,
-            doc = """Name of the architecture that can run Go's
-                precompiled executables""",
-        ),
-        "gohostos": attr.string(
-            mandatory = True,
-            doc = """Name of the operating system that can run Go's
-                precompiled executables""",
-        ),
-        "stdlib": attr.label(
-            mandatory = True,
-            cfg = "exec",
-            providers = [GoStdLibInfo],
-            doc = "The compiled standard library",
-        ),
         "tools": attr.label_list(
             mandatory = True,
             doc = "Compiler, linker, and other executables from the Go distribution",
+        ),
+        "stdlib": attr.label(
+            mandatory = True,
+            allow_single_file = True,
+            cfg = "target",
+            doc = "Package files for the standard library compiled by go_stdlib",
         ),
     },
     doc = "Gathers functions and file lists needed for a Go toolchain",

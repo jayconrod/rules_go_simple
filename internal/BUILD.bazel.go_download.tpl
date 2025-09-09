@@ -2,7 +2,11 @@
 # a downloaded Go distribution.
 
 load("@rules_go_simple//:def.bzl", "go_toolchain")
-load("@rules_go_simple//internal:rules.bzl", "go_stdlib", "go_tool_binary")
+load(
+    "@rules_go_simple//internal:rules.bzl",
+    "go_stdlib",
+    "go_tool_binary",
+)
 
 # tools contains executable files that are part of the toolchain.
 filegroup(
@@ -11,9 +15,7 @@ filegroup(
     visibility = ["//visibility:public"],
 )
 
-# stdlib compiles the standard library.
-# Since Go 1.20, there is no precompiled version, so we always need to compile
-# it, even before :builder.
+# stdlib compiles packages in the standard library.
 go_stdlib(
     name = "stdlib",
     srcs = glob(
@@ -34,6 +36,7 @@ go_tool_binary(
     srcs = ["@rules_go_simple//internal/builder:builder_srcs"],
     stdlib = ":stdlib",
     tools = [":tools"],
+    visibility = ["//visibility:public"],
 )
 
 # toolchain_impl gathers information about the Go toolchain.
@@ -41,8 +44,6 @@ go_tool_binary(
 go_toolchain(
     name = "toolchain_impl",
     builder = ":builder",
-    gohostarch = "{goarch}",
-    gohostos = "{goos}",
     stdlib = ":stdlib",
     tools = [":tools"],
 )

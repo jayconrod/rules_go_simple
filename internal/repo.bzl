@@ -3,45 +3,52 @@
 # This file is part of rules_go_simple. Use of this source code is governed by
 # the 3-clause BSD license that can be found in the LICENSE.txt file.
 
-"""Repository rules for obtaining the Go distribution.
+"""Repository rules for rules_go_simple.
 
-Repository rules should be kept in a separate file from other rules.
-This file may be loaded very early in WORKSPACE, so repository rules
-should have very few dependencies if any.
+A repository rule creates a "repo", a named directory containing build files
+and source files, usually downloaded from an external dependency. Both of the
+repository rules here are used internally by the go module extension.
+
+go_download actually downloads a Go distribution archive and generates a
+BUILD.bazel file that can build the standard library and a builder binary.
+
+go_toolchains generates a BUILD.bazel file with all of the toolchain
+definitions.
+
+The go module extension declares one go_toolchains repo and multiple
+go_download repos (one for each supported platform). Bazel will only materialize
+a go_download repo if its toolchain is selected for a build.
 """
+
+_GOOS_TO_CONSTRAINT = {
+    "darwin": "@platforms//os:macos",
+    "linux": "@platforms//os:linux",
+    "windows": "@platforms//os:windows",
+}
+
+_GOARCH_TO_CONSTRAINT = {
+    "amd64": "@platforms//cpu:x86_64",
+    "arm64": "@platforms//cpu:aarch64",
+}
 
 def _go_download_impl(ctx):
     # Download the Go distribution.
-    # Execute 'tar x' explicitly instead of using ctx.download_and_extract.
-    # The Go archive contains test files with invalid unicode names,
-    # which ctx.download_and_extract does not tolerate.
     ctx.report_progress("downloading")
-    ctx.download(
+    ctx.download_and_extract(
         ctx.attr.urls,
         sha256 = ctx.attr.sha256,
-        output = "go.tar.gz",
+        strip_prefix = "go",
     )
-    ctx.report_progress("extracting")
-    ctx.execute(["tar", "xf", "go.tar.gz", "--strip-components=1"])
-    ctx.delete("go.tar.gz")
 
     # Add a build file to the repository root directory.
     # We need to fill in some template parameters, based on the platform.
     ctx.report_progress("generating build file")
-    if ctx.attr.goos == "darwin":
-        os_constraint = "@platforms//os:osx"
-    elif ctx.attr.goos == "linux":
-        os_constraint = "@platforms//os:linux"
-    elif ctx.attr.goos == "windows":
-        os_constraint = "@platforms//os:windows"
-    else:
+    os_constraint = _GOOS_TO_CONSTRAINT.get(ctx.attr.goos)
+    if os_constraint == None:
         fail("unsupported goos: " + ctx.attr.goos)
-    if ctx.attr.goarch == "amd64":
-        arch_constraint = "@platforms//cpu:x86_64"
-    elif ctx.attr.goarch == "arm64":
-        arch_constraint = "@platforms//cpu:arm64"
-    else:
-        fail("unsupported arch: " + ctx.attr.goarch)
+    arch_constraint = _GOARCH_TO_CONSTRAINT.get(ctx.attr.goarch)
+    if arch_constraint == None:
+        fail("unsupported goarch: " + ctx.attr.goarch)
     constraints = [os_constraint, arch_constraint]
     constraint_str = ",\n        ".join(['"%s"' % c for c in constraints])
 
@@ -80,7 +87,7 @@ go_download = repository_rule(
             doc = "Host architecture for the Go distribution",
         ),
         "_build_tpl": attr.label(
-            default = "@rules_go_simple//internal:BUILD.dist.bazel.tpl",
+            default = "//internal:BUILD.bazel.go_download.tpl",
         ),
     },
     doc = "Downloads a standard Go distribution and installs a build file",
