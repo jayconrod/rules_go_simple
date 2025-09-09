@@ -10,21 +10,6 @@ import (
 	"strings"
 )
 
-// splitArgs splits an argument list into two lists: builder arguments (for this
-// program) and tool arguments (for an underlying tool like the compiler). The
-// "--" argument is used as a separator. If this argument is not found, all
-// arguments are builder arguments.
-func splitArgs(args []string) (builderArgs, toolArgs []string) {
-	builderArgs = args
-	for i, arg := range args {
-		if arg == "--" {
-			builderArgs = args[:i]
-			toolArgs = args[i+1:]
-		}
-	}
-	return builderArgs, toolArgs
-}
-
 // archive is a mapping from a package path (e.g., "fmt") to a file system
 // path to the package's archive (e.g., "/opt/go/pkg/linux_amd64/fmt.a").
 type archive struct {

@@ -10,7 +10,6 @@ import (
 	"flag"
 	"fmt"
 	"go/build"
-	"io/ioutil"
 	"os"
 	"strings"
 	"text/template"
@@ -44,10 +43,10 @@ type testArchiveInfo struct {
 // that into the main archive. Finally, test links the test executable.
 func test(args []string) error {
 	// Parse command line arguments.
-	var stdImportcfgPath, packagePath, outPath, runDir string
+	var stdlibPath, packagePath, outPath, runDir string
 	var directArchives, transitiveArchives []archive
 	fs := flag.NewFlagSet("test", flag.ExitOnError)
-	fs.StringVar(&stdImportcfgPath, "stdimportcfg", "", "path to importcfg for the standard library")
+	fs.StringVar(&stdlibPath, "stdlib", "", "path to a directory containing compiled standard library packages")
 	fs.StringVar(&packagePath, "p", "default", "string used to import the test library")
 	fs.Var(archiveFlag{&directArchives}, "direct", "information about direct dependencies")
 	fs.Var(archiveFlag{&transitiveArchives}, "transitive", "information about transitive dependencies")
@@ -97,7 +96,7 @@ func test(args []string) error {
 
 	// Build a map from package paths to archive files using the standard
 	// importcfg and -direct command line arguments.
-	archiveMap, err := readImportcfg(stdImportcfgPath)
+	archiveMap, err := listStdlibPaths(stdlibPath)
 	if err != nil {
 		return err
 	}
@@ -114,7 +113,7 @@ func test(args []string) error {
 			mainInfo.TestMainPackageName = testInfo.PackageName
 		}
 
-		testArchivePath, err = compileTestArchive(testInfo.ImportPath, testInfo.srcPaths, testInfo.srcs, archiveMap)
+		testArchivePath, err = compileTestArchive(testInfo.ImportPath, testInfo.srcPaths, archiveMap)
 		if err != nil {
 			return err
 		}
@@ -132,7 +131,7 @@ func test(args []string) error {
 			mainInfo.TestMainPackageName = xtestInfo.PackageName
 		}
 
-		xtestArchivePath, err = compileTestArchive(xtestInfo.ImportPath, xtestInfo.srcPaths, xtestInfo.srcs, archiveMap)
+		xtestArchivePath, err = compileTestArchive(xtestInfo.ImportPath, xtestInfo.srcPaths, archiveMap)
 		if err != nil {
 			return err
 		}
@@ -157,7 +156,7 @@ func test(args []string) error {
 	}
 	defer os.Remove(importcfgPath)
 
-	testMainArchiveFile, err := ioutil.TempFile("", "*-testmain.a")
+	testMainArchiveFile, err := os.CreateTemp("", "*-testmain.a")
 	if err != nil {
 		return err
 	}
@@ -174,13 +173,13 @@ func test(args []string) error {
 	return runLinker(testMainArchivePath, importcfgPath, outPath)
 }
 
-func compileTestArchive(packagePath string, srcPaths []string, srcs []sourceInfo, archiveMap map[string]string) (string, error) {
+func compileTestArchive(packagePath string, srcPaths []string, archiveMap map[string]string) (string, error) {
 	importcfgPath, err := writeTempImportcfg(archiveMap)
 	if err != nil {
 		return "", err
 	}
 
-	tmpArchiveFile, err := ioutil.TempFile("", "*-test.a")
+	tmpArchiveFile, err := os.CreateTemp("", "*-test.a")
 	if err != nil {
 		return "", err
 	}
@@ -237,7 +236,7 @@ func main() {
 `))
 
 func generateTestMain(mainInfo testMainInfo) (testmainPath string, err error) {
-	testmainFile, err := ioutil.TempFile("", "*-testmain.go")
+	testmainFile, err := os.CreateTemp("", "*-testmain.go")
 	if err != nil {
 		return "", err
 	}

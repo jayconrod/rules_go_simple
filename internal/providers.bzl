@@ -19,17 +19,5 @@ GoLibraryInfo = provider(
             archive: The .a file compiled from the library's sources.
         """,
         "deps": "A depset of info structs for this library's dependencies",
-        "files": """A depset of files containing this library and everything
-        it transitively imports.""",
-    },
-)
-
-GoStdLibInfo = provider(
-    doc = "Contains information about the compiled Go standard library",
-    fields = {
-        "importcfg": """A File mapping each package path to the corresponding
-            file path relative to the Bazel exec root.""",
-        "packages": "A directory File containing compiled packages.",
-        "files": "A depset of files in the compiled standard library.",
     },
 )

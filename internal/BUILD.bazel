@@ -7,3 +7,10 @@ go_stdlib(
     name = "stdlib",
     visibility = ["//visibility:public"],
 )
+
+# An exports_files declaration makes this source file available in other
+# packages. It's an implicit dependency of go_tool_binary.
+exports_files(
+    ["tool_binary.sh"],
+    visibility = ["//visibility:public"],
+)
