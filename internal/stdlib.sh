@@ -17,18 +17,9 @@ pkg_dir="$2"
 #
 # GOCACHE stores compiled output files.
 # GOROOT stores a copy of the source tree.
-orig_goroot=$("$go_cmd" env GOROOT)
-export GOTOOLDIR=$("$go_cmd" env GOTOOLDIR)
 export GOCACHE=$(mktemp -d -t gocache)
-export GOROOT=$(mktemp -d -t goroot)
-cleanup_paths=("$GOCACHE" "$GOROOT")
+cleanup_paths=("$GOCACHE")
 trap 'chmod -R u+w "${cleanup_paths[@]}" && rm -rf "${cleanup_paths[@]}"' EXIT
-
-# Copy the source tree, replacing symbolic links with hard links.
-# When Bazel constructs the action's execution directory, it may use symbolic
-# links for input files, but the Go command does not allow this for embeded
-# files, so we need to undo that.
-cp -RLl "$orig_goroot"/* "$GOROOT"
 
 # Compile the packages in the standard library.
 # Instead of 'go build std' we use 'go list -export std' because we want to
