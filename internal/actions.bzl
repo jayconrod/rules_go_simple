@@ -20,11 +20,11 @@ def go_compile(ctx, *, srcs, importpath, deps, out):
         deps: list of GoLibraryInfo objects for direct dependencies.
         out: output .a File.
     """
-    toolchain = ctx.toolchains["@rules_go_simple//:toolchain_type"]
 
+    # EXERCISE: run the builder binary using the toolchain.
     args = ctx.actions.args()
     args.add("compile")
-    args.add("-stdlib", toolchain.internal.stdlib.path)
+    args.add("-stdlib", "todo")
     dep_infos = [d.info for d in deps]
     args.add_all(dep_infos, before_each = "-arc", map_each = _format_arc)
     if importpath:
@@ -33,15 +33,13 @@ def go_compile(ctx, *, srcs, importpath, deps, out):
     args.add_all(srcs)
 
     inputs = (srcs +
-              [dep.info.archive for dep in deps] +
-              [toolchain.internal.stdlib] +
-              toolchain.internal.tools)
+              [dep.info.archive for dep in deps])
     ctx.actions.run(
         outputs = [out],
         inputs = inputs,
-        executable = toolchain.internal.builder,
+        executable = None,
         arguments = [args],
-        env = toolchain.internal.env,
+        env = None,
         mnemonic = "GoCompile",
     )
 

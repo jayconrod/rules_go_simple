@@ -53,10 +53,4 @@ go_download(
     urls = ["https://go.dev/dl/go1.25.0.linux-amd64.tar.gz"],
 )
 
-# Register toolchains from both versions. Unfortunately, this means we'll
-# actually download and extract both archives, even though we only need one.
-# We'll fix that in the next version.
-register_toolchains(
-    "@go_darwin_arm64//:toolchain",
-    "@go_linux_amd64//:toolchain",
-)
+# EXERCISE: register toolchains declared in the above repos.

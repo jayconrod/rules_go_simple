@@ -39,26 +39,4 @@ go_tool_binary(
     visibility = ["//visibility:public"],
 )
 
-# toolchain_impl gathers information about the Go toolchain.
-# See the GoToolchain provider.
-go_toolchain(
-    name = "toolchain_impl",
-    builder = ":builder",
-    stdlib = ":stdlib",
-    tools = [":tools"],
-)
-
-# toolchain is a Bazel toolchain that expresses execution and target
-# constraints for toolchain_impl. This target should be registered by
-# calling register_toolchains in a WORKSPACE file.
-toolchain(
-    name = "toolchain",
-    exec_compatible_with = [
-        {exec_constraints},
-    ],
-    target_compatible_with = [
-        {target_constraints},
-    ],
-    toolchain = ":toolchain_impl",
-    toolchain_type = "@rules_go_simple//:toolchain_type",
-)
+# EXERCISE: declare a toolchain and a toolchain implementation.

@@ -138,18 +138,9 @@ will be compiled, and they may only depend on the standard library.
 )
 
 def _go_library_impl(ctx):
-    # Load the toolchain.
-    toolchain = ctx.toolchains["@rules_go_simple//:toolchain_type"]
-
     # Declare an output file for the library package and compile it from srcs.
     archive = ctx.actions.declare_file("{name}.a".format(name = ctx.label.name))
-    toolchain.compile(
-        ctx,
-        srcs = ctx.files.srcs,
-        importpath = ctx.attr.importpath,
-        deps = [dep[GoLibraryInfo] for dep in ctx.attr.deps],
-        out = archive,
-    )
+    # EXERCISE: use the toolchain to compile the library.
 
     # Return the output file and metadata about the library.
     runfiles = _collect_runfiles(
@@ -195,7 +186,7 @@ go_library = rule(
         ),
     },
     doc = "Compiles a Go archive from Go sources and dependencies",
-    toolchains = ["@rules_go_simple//:toolchain_type"],
+    # EXERCISE: depend on the toolchain.
 )
 
 def _go_test_impl(ctx):
