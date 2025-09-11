@@ -16,7 +16,8 @@ import (
 var helloPath = flag.String("hello", "", "path to hello binary")
 
 func TestHello(t *testing.T) {
-	cmd := exec.Command(strings.TrimPrefix(*helloPath, "tests/"))
+	binPath := "./" + strings.TrimPrefix(*helloPath, "tests/")
+	cmd := exec.Command(binPath)
 	out, err := cmd.Output()
 	if err != nil {
 		t.Fatal(err)

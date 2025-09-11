@@ -7,101 +7,57 @@ package main
 
 import (
 	"bytes"
-	"encoding/json"
-	"flag"
 	"fmt"
-	"io/ioutil"
+	"io/fs"
 	"os"
-	"os/exec"
+	"path/filepath"
 	"sort"
 	"strings"
 )
 
-// stdImportcfg produces an importcfg file for all the packages in the
-// standard library.
-func stdImportcfg(args []string) (err error) {
-	// Process command line arguments.
-	var outPath string
-	fs := flag.NewFlagSet("stdimportcfg", flag.ExitOnError)
-	fs.StringVar(&outPath, "o", "", "path to standard library importcfg")
-	fs.Parse(args)
-
-	// Use "go list" to list the packages and locate the archives.
-	cache, err := ioutil.TempDir("", "gocache")
-	if err != nil {
-		return err
-	}
-	defer os.RemoveAll(cache)
-	os.Setenv("GOCACHE", cache)
-	cmd := exec.Command("go", "list", "-json", "std")
-	cmd.Stderr = os.Stderr
-	data, err := cmd.Output()
-	if err != nil {
-		return fmt.Errorf("executing go list: %v", err)
-	}
-
-	// Construct the importcfg file from "go list" output.
-	archiveMap := make(map[string]string)
-	type pkg struct {
-		Standard           bool
-		ImportPath, Target string
-	}
-	buf := bytes.NewBuffer(data)
-	dec := json.NewDecoder(buf)
-	for dec.More() {
-		var p pkg
-		if err := dec.Decode(&p); err != nil {
-			return fmt.Errorf("decoding go list output: %v", err)
-		}
-		if !p.Standard || p.Target == "" {
-			continue
-		}
-		archiveMap[p.ImportPath] = p.Target
-	}
-
-	return writeImportcfg(archiveMap, outPath)
+// isStdPackage returns the path to a compile package file in the standard
+// library and a bool indicating whether it exists.
+func isStdPackage(stdlibPath, imp string) (pkgFile string, exists bool) {
+	pkgFile = filepath.Join(stdlibPath, imp+".a")
+	_, err := os.Stat(pkgFile)
+	return pkgFile, err == nil
 }
 
-// readImportcfg parses an importcfg file. It returns a map from package paths
-// to archive file paths.
-func readImportcfg(importcfgPath string) (map[string]string, error) {
-	archiveMap := make(map[string]string)
-
-	data, err := ioutil.ReadFile(importcfgPath)
+// listStdlibPaths returns a map from standard library import strings to
+// compiled package file paths. This map may be used to write an importcfg file.
+func listStdlibPaths(stdlibPath string) (_ map[string]string, err error) {
+	defer func() {
+		if err != nil {
+			err = fmt.Errorf("listing std paths: %w", err)
+		}
+	}()
+	stdlibPath, err = filepath.Abs(stdlibPath)
 	if err != nil {
 		return nil, err
 	}
-
-	// based on parsing code in cmd/link/internal/ld/ld.go
-	for lineNum, line := range strings.Split(string(data), "\n") {
-		lineNum++ // 1-based
-		line = strings.TrimSpace(line)
-		if line == "" || strings.HasPrefix(line, "#") {
-			continue
+	entries := make(map[string]string)
+	err = filepath.WalkDir(stdlibPath, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
 		}
-
-		var verb, args string
-		if i := strings.Index(line, " "); i < 0 {
-			verb = line
-		} else {
-			verb, args = line[:i], strings.TrimSpace(line[i+1:])
+		if !strings.HasSuffix(path, ".a") || d.IsDir() {
+			return nil
 		}
-		var before, after string
-		if i := strings.Index(args, "="); i >= 0 {
-			before, after = args[:i], args[i+1:]
-		}
-		if verb == "packagefile" {
-			archiveMap[before] = after
-		}
+		imp := strings.TrimPrefix(path, stdlibPath+string(os.PathSeparator))
+		imp = strings.TrimSuffix(imp, ".a")
+		entries[imp] = path
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
-
-	return archiveMap, nil
+	return entries, nil
 }
 
 // writeTempImportcfg writes a temporary importcfg file. The caller is
 // responsible for deleting it.
 func writeTempImportcfg(archiveMap map[string]string) (string, error) {
-	tmpFile, err := ioutil.TempFile("", "importcfg-*")
+	tmpFile, err := os.CreateTemp("", "importcfg-*")
 	if err != nil {
 		return "", err
 	}
@@ -129,5 +85,5 @@ func writeImportcfg(archiveMap map[string]string, outPath string) error {
 		fmt.Fprintf(buf, "packagefile %s=%s\n", pkgPath, archiveMap[pkgPath])
 	}
 
-	return ioutil.WriteFile(outPath, buf.Bytes(), 0666)
+	return os.WriteFile(outPath, buf.Bytes(), 0666)
 }

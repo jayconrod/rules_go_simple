@@ -1,1 +1,16 @@
-# Empty build file, just here to define a package.
+load("//internal:rules.bzl", "go_stdlib")
+
+# go_stdlib builds the Go standard library.
+# This rule should only be instantiated once, here.
+# All other Go rules have a hidden dependency on this target.
+go_stdlib(
+    name = "stdlib",
+    visibility = ["//visibility:public"],
+)
+
+# An exports_files declaration makes this source file available in other
+# packages. It's an implicit dependency of go_tool_binary.
+exports_files(
+    ["tool_binary.sh"],
+    visibility = ["//visibility:public"],
+)

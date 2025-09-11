@@ -10,77 +10,40 @@ call functions to create actions. This allows action code to be shared
 by multiple rules.
 """
 
-load("@bazel_skylib//lib:shell.bzl", "shell")
-
-def declare_archive(ctx, importpath):
-    """Declares a new .a file the compiler should produce.
-
-    .a files are consumed by the compiler (for dependency type information)
-    and the linker. Both tools locate archives using lists of search paths.
-    Archives must be named according to their importpath. For example,
-    library "example.com/foo" must be named "<searchdir>/example.com/foo.a".
-
-    Args:
-        ctx: analysis context.
-        importpath: the name by which the library may be imported.
-    Returns:
-        A File that should be written by the compiler.
-    """
-    return ctx.actions.declare_file("{name}%/{importpath}.a".format(
-        name = ctx.label.name,
-        importpath = importpath,
-    ))
-
-def go_compile(ctx, srcs, out, importpath = "", deps = []):
+def go_compile(ctx, *, srcs, importpath, stdlib, deps, out):
     """Compiles a single Go package from sources.
 
     Args:
         ctx: analysis context.
         srcs: list of source Files to be compiled.
-        out: output .a file. Should have the importpath as a suffix,
-            for example, library "example.com/foo" should have the path
-            "somedir/example.com/foo.a".
         importpath: the path other libraries may use to import this package.
+        stdlib: a File for the compiled standard library directory.
         deps: list of GoLibraryInfo objects for direct dependencies.
+        out: output .a File.
     """
-    args = ctx.actions.args()
-    args.add("compile")
-    args.add("-stdimportcfg", ctx.file._stdimportcfg)
-    dep_infos = [d.info for d in deps]
-    args.add_all(dep_infos, before_each = "-arc", map_each = _format_arc)
-    if importpath:
-        args.add("-p", importpath)
-    args.add("-o", out)
-    args.add_all(srcs)
+    # EXERCISE: use the builder binary to compile the package.
 
-    inputs = srcs + [dep.info.archive for dep in deps] + [ctx.file._stdimportcfg]
-    ctx.actions.run(
-        outputs = [out],
-        inputs = inputs,
-        executable = ctx.executable._builder,
-        arguments = [args],
-        mnemonic = "GoCompile",
-        use_default_shell_env = True,
-    )
-
-def go_link(ctx, out, main, deps = []):
+def go_link(ctx, *, main, stdlib, builder, deps, out):
     """Links a Go executable.
 
     Args:
         ctx: analysis context.
-        out: output executable file.
         main: archive file for the main package.
+        stdlib: a File for the compiled standard library directory.
+        builder: an executable File for the builder tool.
         deps: list of GoLibraryInfo objects for direct dependencies.
+        out: output executable file.
     """
+
     transitive_deps = depset(
         direct = [d.info for d in deps],
         transitive = [d.deps for d in deps],
     )
-    inputs = [main, ctx.file._stdimportcfg] + [d.archive for d in transitive_deps.to_list()]
+    inputs = [main, stdlib] + [d.archive for d in transitive_deps.to_list()]
 
     args = ctx.actions.args()
     args.add("link")
-    args.add("-stdimportcfg", ctx.file._stdimportcfg)
+    args.add("-stdlib", stdlib.path)
     args.add_all(transitive_deps, before_each = "-arc", map_each = _format_arc)
     args.add("-main", main)
     args.add("-o", out)
@@ -88,33 +51,35 @@ def go_link(ctx, out, main, deps = []):
     ctx.actions.run(
         outputs = [out],
         inputs = inputs,
-        executable = ctx.executable._builder,
+        executable = builder,
         arguments = [args],
-        mnemonic = "GoLink",
         use_default_shell_env = True,
+        mnemonic = "GoLink",
     )
 
-def go_build_test(ctx, srcs, deps, out, rundir = "", importpath = ""):
+def go_build_test(ctx, *, srcs, stdlib, builder, deps, rundir, importpath, out):
     """Compiles and links a Go test executable.
 
     Args:
         ctx: analysis context.
         srcs: list of source Files to be compiled.
+        stdlib: a File for the compiled standard library directory.
+        builder: an executable File for the builder tool.
         deps: list of GoLibraryInfo objects for direct dependencies.
-        out: output executable file.
         importpath: import path of the internal test archive.
         rundir: directory the test should change to before executing.
+        out: output executable file.
     """
     direct_dep_infos = [d.info for d in deps]
     transitive_dep_infos = depset(transitive = [d.deps for d in deps]).to_list()
     inputs = (srcs +
-              [ctx.file._stdimportcfg] +
+              [stdlib] +
               [d.archive for d in direct_dep_infos] +
               [d.archive for d in transitive_dep_infos])
 
     args = ctx.actions.args()
     args.add("test")
-    args.add("-stdimportcfg", ctx.file._stdimportcfg)
+    args.add("-stdlib", stdlib.path)
     args.add_all(direct_dep_infos, before_each = "-direct", map_each = _format_arc)
     args.add_all(transitive_dep_infos, before_each = "-transitive", map_each = _format_arc)
     if rundir != "":
@@ -127,53 +92,10 @@ def go_build_test(ctx, srcs, deps, out, rundir = "", importpath = ""):
     ctx.actions.run(
         outputs = [out],
         inputs = inputs,
-        executable = ctx.executable._builder,
+        executable = builder,
         arguments = [args],
+        use_default_shell_env = True,
         mnemonic = "GoTest",
-        use_default_shell_env = True,
-    )
-
-def go_build_tool(ctx, srcs, out):
-    """Compiles and links a Go executable to be used in the toolchain.
-
-    Only allows a main package that depends on the standard library.
-    Does not support data or other dependencies.
-
-    Args:
-        ctx: analysis context.
-        srcs: list of source Files to be compiled.
-        out: output executable file.
-    """
-    cmd_tpl = ("go tool compile -o {out}.a {srcs} && " +
-               "go tool link -o {out} {out}.a")
-    cmd = cmd_tpl.format(
-        out = shell.quote(out.path),
-        srcs = " ".join([shell.quote(src.path) for src in srcs]),
-    )
-    ctx.actions.run_shell(
-        outputs = [out],
-        inputs = srcs,
-        command = cmd,
-        mnemonic = "GoToolBuild",
-        use_default_shell_env = True,
-    )
-
-def go_write_stdimportcfg(ctx, out):
-    """Generates an importcfg file for the standard library.
-
-    importcfg files map import paths to archive files. Every compile and link
-    action needs this.
-
-    Args:
-        ctx: analysis context.
-        out: output importcfg file.
-    """
-    ctx.actions.run(
-        outputs = [out],
-        arguments = ["stdimportcfg", "-o", out.path],
-        executable = ctx.executable._builder,
-        mnemonic = "GoStdImportcfg",
-        use_default_shell_env = True,
     )
 
 def _format_arc(lib):

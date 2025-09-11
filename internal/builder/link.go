@@ -16,10 +16,10 @@ import (
 // dependencies (both direct and transitive).
 func link(args []string) error {
 	// Process command line arguments.
-	var stdImportcfgPath, mainPath, outPath string
+	var stdlibPath, mainPath, outPath string
 	var archives []archive
 	fs := flag.NewFlagSet("link", flag.ExitOnError)
-	fs.StringVar(&stdImportcfgPath, "stdimportcfg", "", "path to importcfg for the standard library")
+	fs.StringVar(&stdlibPath, "stdlib", "", "path to a directory containing compiled standard library packages")
 	fs.Var(archiveFlag{&archives}, "arc", "information about dependencies (including transitive dependencies), formatted as packagepath=file (may be repeated)")
 	fs.StringVar(&mainPath, "main", "", "path to main package archive file")
 	fs.StringVar(&outPath, "o", "", "path to binary file the linker should produce")
@@ -28,8 +28,12 @@ func link(args []string) error {
 		return fmt.Errorf("expected 0 positional arguments; got %d", len(fs.Args()))
 	}
 
-	// Build an importcfg file.
-	archiveMap, err := readImportcfg(stdImportcfgPath)
+	// Build an importcfg file that maps package paths to compiled archive files.
+	// This includes the main package, all transitively imported packages listed
+	// with -arc, and all standard library packages. We don't technically need to
+	// list unimported standard library packages, but within this action, there's
+	// no way to know which packages are actually imported.
+	archiveMap, err := listStdlibPaths(stdlibPath)
 	if err != nil {
 		return err
 	}
@@ -52,5 +56,6 @@ func runLinker(mainPath, importcfgPath string, outPath string) error {
 	cmd := exec.Command("go", args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
+	cmd.Env = []string{"GOPATH=/dev/null"} // suppress warning
 	return cmd.Run()
 }
