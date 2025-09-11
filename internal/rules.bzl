@@ -11,14 +11,8 @@ actions).
 """
 
 load(":actions.bzl", "go_compile", "go_link")
-load(":util.bzl", "find_go_cmd")
 
-def _go_binary_impl(ctx):
-    pass
-    # EXERCISE: declare output file, call go_compile, go_link to create
-    # actions, return DefaultInfo.
-
-# EXERCISE: declare rule.
+# EXERCISE: declare and implement the rule.
 go_binary = None
 
 def _go_stdlib_impl(ctx):
