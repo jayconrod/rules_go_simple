@@ -24,16 +24,6 @@ GoLibraryInfo = provider(
     },
 )
 
-GoStdLibInfo = provider(
-    doc = "Contains information about the compiled Go standard library",
-    fields = {
-        "importcfg": """A File mapping each package path to the corresponding
-            file path relative to the Bazel exec root.""",
-        "packages": "A directory File containing compiled packages.",
-        "files": "A depset of files in the compiled standard library.",
-    },
-)
-
 # GoToolchainInfo is a dummy provider that serves as documentation for the
 # public interface of the ToolchainInfo provide returned by go_toolchain.
 # Toolchains compatible with @rules_go_simple//:toolchain_type must
