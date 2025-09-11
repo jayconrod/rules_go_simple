@@ -1,0 +1,27 @@
+# The MODULE.bazel file appears in the root directory of each Bazel module.
+# Its main purpose is to list the other Bazel modules that this module depends
+# on. MODULE.bazel may also contain non-module dependencies declared with
+# repository rules or module extensions. It may have other declarations too
+# like toolchain registrations.
+
+# The string below is this module's documentation string. It may be shown
+# on the Bazel Central Registry and other places.
+"""
+rules_go_simple is a simple set of Bazel rules for building Go code. It
+is intended to be a simple, clean, minimal example of how to write Bazel
+rules for new languages.
+"""
+
+# The module declaration sets this module's name. You can use this name to
+# refer to targets within this module. Other modules can depend on this module
+# using this name.
+module(name = "rules_go_simple")
+
+# bazel_dep declarations register dependencies on other modules.
+# Bazel recursively fetches their MODULE.bazel files and other metadata
+# from the Bazel Central Registry (or whatever registry you're using)
+# and selects a version of each module to use, which may be higher than the
+# version listed here if another module requires a higher version.
+
+# bazel_skylib is a common library for writing and testing Bazel rules.
+bazel_dep(name = "bazel_skylib", version = "1.7.1")

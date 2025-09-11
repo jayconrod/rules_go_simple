@@ -12,100 +12,105 @@ by multiple rules.
 
 load("@bazel_skylib//lib:shell.bzl", "shell")
 
-def declare_archive(ctx, importpath):
-    """Declares a new .a file the compiler should produce.
-
-    .a files are consumed by the compiler (for dependency type information)
-    and the linker. Both tools locate archives using lists of search paths.
-    Archives must be named according to their importpath. For example,
-    library "example.com/foo" must be named "<searchdir>/example.com/foo.a".
-
-    Args:
-        ctx: analysis context.
-        importpath: the name by which the library may be imported.
-    Returns:
-        A File that should be written by the compiler.
-    """
-    return ctx.actions.declare_file("{name}%/{importpath}.a".format(
-        name = ctx.label.name,
-        importpath = importpath,
-    ))
-
-def _search_dir(info):
-    """Returns a directory that should be searched.
-
-    This directory is passed to the compiler or linker with the -I and -L flags,
-    respectively, to find the archive file for a library. The archive
-    must have been declared with declare_archive.
-
-    Args:
-        info: GoLibraryInfo.info for this library.
-    Returns:
-        A path string for the directory.
-    """
-    suffix_len = len("/" + info.importpath + ".a")
-    return info.archive.path[:-suffix_len]
-
-def go_compile(ctx, importpath, srcs, out, deps = []):
+def go_compile(ctx, *, srcs, importpath, stdlib, deps, out):
     """Compiles a single Go package from sources.
 
     Args:
         ctx: analysis context.
-        importpath: name by which the package will be imported.
         srcs: list of source Files to be compiled.
-        out: output .a file. Should have the importpath as a suffix,
-            for example, library "example.com/foo" should have the path
-            "somedir/example.com/foo.a".
+        importpath: the path other libraries may use to import this package.
+        stdlib: a File for the compiled standard library directory.
         deps: list of GoLibraryInfo objects for direct dependencies.
+        out: output .a File.
     """
-    dep_import_args = []
-    dep_archives = []
-    for dep in deps:
-        dep_import_args.append("-I " + shell.quote(_search_dir(dep.info)))
-        dep_archives.append(dep.info.archive)
 
-    cmd = "go tool compile -p {importpath} -o {out} {imports} -- {srcs}".format(
-        importpath = importpath,
+    dep_importcfg_text = "\n".join([
+        "packagefile {importpath}={filepath}".format(
+            importpath = dep.info.importpath,
+            filepath = dep.info.archive.path,
+        )
+        for dep in deps
+    ])
+    cmd = r"""
+importcfg=$(mktemp)
+pushd {stdlib} >/dev/null
+for file in $(find -L . -type f); do
+  without_suffix="${{file%.a}}"
+  pkg_path="${{without_suffix#./}}"
+  abs_file="$PWD/$file"
+  printf "packagefile %s=%s\n" "$pkg_path" "$abs_file" >>"$importcfg"
+done
+popd >/dev/null
+cat >>"$importcfg" <<'EOF'
+{dep_importcfg_text}
+EOF
+go tool compile -o {out} -p {importpath} -importcfg "$importcfg" -- {srcs}
+""".format(
+        stdlib = shell.quote(stdlib.path),
+        dep_importcfg_text = dep_importcfg_text,
         out = shell.quote(out.path),
-        imports = " ".join(dep_import_args),
+        importpath = shell.quote(importpath),
         srcs = " ".join([shell.quote(src.path) for src in srcs]),
     )
+
+    inputs = srcs + [stdlib] + [dep.info.archive for dep in deps]
     ctx.actions.run_shell(
-        outputs = [out],
-        inputs = srcs + dep_archives,
-        command = cmd,
         mnemonic = "GoCompile",
+        outputs = [out],
+        inputs = inputs,
+        command = cmd,
+        env = {"GOPATH": "/dev/null"},  # suppress warning
         use_default_shell_env = True,
     )
 
-def go_link(ctx, out, main, deps = []):
+def go_link(ctx, *, main, stdlib, deps, out):
     """Links a Go executable.
 
     Args:
         ctx: analysis context.
-        out: output executable file.
         main: archive file for the main package.
+        stdlib: a File for the compiled standard library directory.
         deps: list of GoLibraryInfo objects for direct dependencies.
+        out: output executable file.
     """
+
     deps_set = depset(
         direct = [d.info for d in deps],
         transitive = [d.deps for d in deps],
     )
-    dep_lib_args = []
-    dep_archives = []
-    for dep in deps_set.to_list():
-        dep_lib_args.append("-L " + shell.quote(_search_dir(dep)))
-        dep_archives.append(dep.archive)
-
-    cmd = "go tool link -o {out} {libs} -- {main}".format(
-        out = shell.quote(out.path),
-        libs = " ".join(dep_lib_args),
+    dep_importcfg_text = "\n".join([
+        "packagefile {importpath}={filepath}".format(
+            importpath = dep.importpath,
+            filepath = dep.archive.path,
+        )
+        for dep in deps_set.to_list()
+    ])
+    cmd = r"""
+importcfg=$(mktemp)
+pushd {stdlib} >/dev/null
+for file in $(find -L . -type f); do
+  without_suffix="${{file%.a}}"
+  pkg_path="${{without_suffix#./}}"
+  abs_file="$PWD/$file"
+  printf "packagefile %s=%s\n" "$pkg_path" "$abs_file" >>"$importcfg"
+done
+cat >>"$importcfg" <<'EOF'
+{dep_importcfg_text}
+EOF
+popd >/dev/null
+go tool link -o {out} -importcfg "$importcfg" -- {main}
+""".format(
+        stdlib = shell.quote(stdlib.path),
+        dep_importcfg_text = dep_importcfg_text,
         main = shell.quote(main.path),
+        out = shell.quote(out.path),
     )
+    inputs = [main, stdlib] + [d.archive for d in deps_set.to_list()]
     ctx.actions.run_shell(
-        outputs = [out],
-        inputs = [main] + dep_archives,
-        command = cmd,
         mnemonic = "GoLink",
+        outputs = [out],
+        inputs = inputs,
+        command = cmd,
+        env = {"GOPATH": "/dev/null"},  # suppress warning
         use_default_shell_env = True,
     )
