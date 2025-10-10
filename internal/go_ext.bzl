@@ -121,8 +121,8 @@ go = module_extension(
     tag_classes = {
         "download": _download_tag,
     },
-    os_dependent = True,
-    arch_dependent = True,
+    os_dependent = False,
+    arch_dependent = False,
     doc = """
 Selects and downloads Go toolchain archives from go.dev and registers
 appropriate Bazel toolchains. Archives are downloaded lazily, only for the

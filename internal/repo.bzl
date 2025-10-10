@@ -105,7 +105,7 @@ toolchain(
         {exec_constraints},
     ],
     target_compatible_with = [
-        {target_constraints},
+        {exec_constraints},
     ],
     toolchain = ":{toolchain_name}_impl",
     toolchain_type = "@rules_go_simple//:toolchain_type",
@@ -132,35 +132,30 @@ def _go_toolchains_impl(ctx):
         builder = "@{}//:builder".format(repo_name)
         tools = "@{}//:tools".format(repo_name)
         stdlib = "@{}//:stdlib".format(repo_name)
-
-        for target_goos_goarch in ctx.attr.goos_goarchs:
-            target_goos, target_goarch = target_goos_goarch.split("_")
-            target_constraints = [
-                _GOOS_TO_CONSTRAINT[target_goos],
-                _GOARCH_TO_CONSTRAINT[target_goarch],
-            ]
-            target_constraints_str = ", ".join(['"{}"'.format(c) for c in target_constraints])
-            toolchain_name = "exec_{}_target_{}".format(exec_goos_goarch, target_goos_goarch)
-
-            lines.append(_TOOLCHAIN_BUILD_TEMPLATE.format(
-                toolchain_name = toolchain_name,
-                exec_constraints = exec_constraints_str,
-                target_constraints = target_constraints_str,
-                builder = builder,
-                tools = tools,
-                stdlib = stdlib,
-            ))
+        lines.append(_TOOLCHAIN_BUILD_TEMPLATE.format(
+            toolchain_name = exec_goos_goarch,
+            exec_constraints = exec_constraints_str,
+            builder = builder,
+            tools = tools,
+            stdlib = stdlib,
+        ))
 
     ctx.file("BUILD.bazel", content = "\n".join(lines))
 
 go_toolchains = repository_rule(
     implementation = _go_toolchains_impl,
     attrs = {
-        "repos": attr.string_list(),
-        "goos_goarchs": attr.string_list(),
+        "repos": attr.string_list(
+            doc = "List of go_download repo names, used for label generation.",
+        ),
+        "goos_goarchs": attr.string_list(
+            doc = "goos_goarch pair (like 'linux_amd64') for each repo in repos.",
+        ),
         "_build_tpl": attr.label(
             default = "//internal:BUILD.bazel.go_toolchains.tpl",
+            doc = "Build file template",
         ),
     },
-    doc = "Declares Go toolchains for all supported platforms",
+    doc = """Internal repository rule that declares toolchain and go_toolchain
+targets for all supported platforms. The go module extension calls this.""",
 )
