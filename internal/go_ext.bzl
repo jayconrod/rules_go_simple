@@ -39,25 +39,13 @@ def _go_impl(ctx):
         fail("go extension used without specifying a version. Declare a go.download tag with your desired version.")
     go_highest_version = "go{}.{}.{}".format(highest_version.major, highest_version.minor, highest_version.patch)
 
-    # Download and parse an index of downloadable archives.
-    download_index_url = "https://go.dev/dl/?mode=json&include=all"
-    ctx.report_progress("checking available files at {}".format(download_index_url))
-    ctx.download(
-        url = [download_index_url],
-        output = "versions.json",
-    )
-    data = ctx.read("versions.json")
-    releases = json.decode(data)
-    files = [
-        file
-        for release in releases
-        if release["version"] == go_highest_version
-        for file in release["files"]
-        if file["kind"] == "archive"
-    ]
-
-    if len(files) == 0:
-        fail("selected Go version '{}' but no files found at {}".format(go_highest_version, download_index_url))
+    archives = _archives_from_facts(ctx.facts, go_highest_version)
+    if archives == None:
+        archives = _fetch_archives(ctx, go_highest_version)
+    facts = {
+        "version": go_highest_version,
+        "files": archives,
+    }
 
     # Declare a go_download repo for each archive. This contains the extracted
     # archive and a generated BUILD.bazel file with targets to compile the
@@ -66,25 +54,15 @@ def _go_impl(ctx):
     # is selected.
     ctx.report_progress("declaring toolchains")
     download_repo_names = []
-    for (goos, goarch) in _PLATFORMS:
-        compatible_files = [
-            file
-            for file in files
-            if file["os"] == goos and
-               file["arch"] == goarch and
-               any([file["filename"].endswith(ext) for ext in _ALLOWED_ARCHIVE_EXTS])
-        ]
-        if len(compatible_files) == 0:
-            fail("no files found for Go version {} compatible with {}/{}".format(go_highest_version, goos, goarch))
-        url = "https://go.dev/dl/{}".format(compatible_files[0]["filename"])
-        sha256 = compatible_files[0]["sha256"]
-
+    for archive in archives:
+        goos = archive["goos"]
+        goarch = archive["goarch"]
         name = "go_{}_{}".format(goos, goarch)
         download_repo_names.append(name)
         go_download(
             name = name,
-            urls = [url],
-            sha256 = sha256,
+            urls = [archive["url"]],
+            sha256 = archive["sha256"],
             goos = goos,
             goarch = goarch,
         )
@@ -99,10 +77,8 @@ def _go_impl(ctx):
     )
 
     return ctx.extension_metadata(
-        # versions.json may change upstream, so we need to record sha256 sums
-        # of downloaded archives in MODULE.bazel.lock. Setting this to True
-        # would prevent that.
-        reproducible = False,
+        reproducible = True,
+        facts = facts,
     )
 
 _download_tag = tag_class(
@@ -129,6 +105,73 @@ appropriate Bazel toolchains. Archives are downloaded lazily, only for the
 toolchains that Bazel selects at build time.
 """,
 )
+
+def _archives_from_facts(facts, go_version):
+    """Returns archive metadata from lockfile facts, or None if unusable."""
+    if facts.get("version") != go_version:
+        return None
+    files = facts.get("files")
+    if files == None:
+        return None
+    by_platform = {}
+    for entry in files:
+        key = "{}_{}".format(entry.get("goos"), entry.get("goarch"))
+        by_platform[key] = entry
+    archives = []
+    for (goos, goarch) in _PLATFORMS:
+        entry = by_platform.get("{}_{}".format(goos, goarch))
+        if entry == None:
+            return None
+        url = entry.get("url")
+        sha256 = entry.get("sha256")
+        if url == None or sha256 == None:
+            return None
+        archives.append({
+            "goos": goos,
+            "goarch": goarch,
+            "url": url,
+            "sha256": sha256,
+        })
+    return archives
+
+def _fetch_archives(ctx, go_version):
+    """Downloads go.dev's release index and returns archive metadata."""
+    download_index_url = "https://go.dev/dl/?mode=json&include=all"
+    ctx.report_progress("checking available files at {}".format(download_index_url))
+    ctx.download(
+        url = [download_index_url],
+        output = "versions.json",
+    )
+    data = ctx.read("versions.json")
+    releases = json.decode(data)
+    files = [
+        file
+        for release in releases
+        if release["version"] == go_version
+        for file in release["files"]
+        if file["kind"] == "archive"
+    ]
+    if len(files) == 0:
+        fail("selected Go version '{}' but no files found at {}".format(go_version, download_index_url))
+    archives = []
+    for (goos, goarch) in _PLATFORMS:
+        compatible_files = [
+            file
+            for file in files
+            if file["os"] == goos and
+               file["arch"] == goarch and
+               any([file["filename"].endswith(ext) for ext in _ALLOWED_ARCHIVE_EXTS])
+        ]
+        if len(compatible_files) == 0:
+            fail("no files found for Go version {} compatible with {}/{}".format(go_version, goos, goarch))
+        file = compatible_files[0]
+        archives.append({
+            "goos": goos,
+            "goarch": goarch,
+            "url": "https://go.dev/dl/{}".format(file["filename"]),
+            "sha256": file["sha256"],
+        })
+    return archives
 
 def _parse_version(v):
     """Parses a semantic version string like '1.2.3'.
