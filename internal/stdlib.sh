@@ -24,11 +24,11 @@ export GOROOT=$(mktemp -d -t goroot)
 cleanup_paths=("$GOCACHE" "$GOROOT")
 trap 'chmod -R u+w "${cleanup_paths[@]}" && rm -rf "${cleanup_paths[@]}"' EXIT
 
-# Copy the source tree, replacing symbolic links with hard links.
+# Copy the source tree.
 # When Bazel constructs the action's execution directory, it may use symbolic
 # links for input files, but the Go command does not allow this for embeded
 # files, so we need to undo that.
-cp -RLl "$orig_goroot"/* "$GOROOT"
+cp -RL "$orig_goroot"/* "$GOROOT"
 
 # Compile the packages in the standard library.
 # Instead of 'go build std' we use 'go list -export std' because we want to
